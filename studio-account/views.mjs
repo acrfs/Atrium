@@ -17,14 +17,13 @@ const S = {
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-export function pageHtml(cfg) {
-  return `<!doctype html>
+const head = (title) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Your password · Shana Studios</title>
+<title>${title}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Outfit:wght@400;500&family=Fraunces:opsz,wght,SOFT@9..144,620,100&display=swap">
 <style>
@@ -63,7 +62,10 @@ export function pageHtml(cfg) {
 </style>
 </head>
 <body>
-<main>
+`;
+
+export function pageHtml(cfg) {
+  return `${head("Your password · Shana Studios")}<main>
   <img class="mark" src="/logo.png" alt="Shana Studios">
   <h1>Change your password</h1>
   <p class="lead">One password for your studio email, your client portal and your website's contact form. Change it in two steps.</p>
@@ -87,10 +89,11 @@ export function pageHtml(cfg) {
       <div id="out" aria-live="polite"></div>
     </li>
   </ol>
-  <footer>Mail apps on your phone or computer will ask for the new password the next time they check mail. That part can't be done from here.</footer>
+  <footer>Mail apps on your phone or computer will ask for the new password the next time they check mail. That part can't be done from here.<br><br><a href="#" id="out-link">Sign out</a></footer>
 </main>
 <script>
 const f = document.getElementById("f"), out = document.getElementById("out"), go = document.getElementById("go");
+document.getElementById("out-link").addEventListener("click", async (e) => { e.preventDefault(); await fetch("/logout", { method: "POST" }); location.reload(); });
 document.getElementById("sh").addEventListener("change", (e) => {
   for (const id of ["p1","p2"]) document.getElementById(id).type = e.target.checked ? "text" : "password";
 });
@@ -112,6 +115,38 @@ f.addEventListener("submit", async (e) => {
     if (allOk) f.reset();
   } catch { show("Lost the connection. Refresh and try again; nothing is shown to anyone.", true); }
   finally { go.disabled = false; go.textContent = "Update everywhere"; }
+});
+</script>
+</body>
+</html>`;
+}
+
+export function signInHtml(cfg) {
+  return `${head("Sign in · Shana Studios")}<main>
+  <img class="mark" src="/logo.png" alt="Shana Studios">
+  <h1>Your password</h1>
+  <p class="lead">Sign in with your current email password for ${esc(cfg.mailbox)}.</p>
+  <form id="f" autocomplete="on">
+    <input type="text" name="username" autocomplete="username" value="${esc(cfg.mailbox)}" hidden readonly>
+    <label for="p">Current password</label>
+    <input id="p" type="password" autocomplete="current-password" required maxlength="128">
+    <button id="go" type="submit">Sign in</button>
+  </form>
+  <div id="out" aria-live="polite"></div>
+</main>
+<script>
+const f = document.getElementById("f"), out = document.getElementById("out"), go = document.getElementById("go");
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);}
+f.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  go.disabled = true; go.textContent = "Checking";
+  try {
+    const r = await fetch("/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: document.getElementById("p").value }) });
+    if (r.ok) { location.reload(); return; }
+    const j = await r.json();
+    out.innerHTML = '<div class="msg err">' + esc(j.error || "Something went wrong.") + '</div>';
+  } catch { out.innerHTML = '<div class="msg err">Lost the connection. Try again.</div>'; }
+  go.disabled = false; go.textContent = "Sign in";
 });
 </script>
 </body>

@@ -74,3 +74,29 @@ test("views escape text and never include the password", () => {
   assert.ok(!html.includes("<b>x</b>"));
   assert.match(pageHtml(cfg), /Titan webmail/);
 });
+
+import { createSessions, readCookie, sessionCookie, SESSION_TTL_MS } from "./session.mjs";
+
+test("sessions: valid until expiry, reject tampering and other keys", () => {
+  let t = 1_000_000;
+  const s = createSessions(Buffer.alloc(32, 1), () => t);
+  const tok = s.issue();
+  assert.equal(s.valid(tok), true);
+  const [exp, mac] = tok.split(".");
+  assert.equal(s.valid(`${Number(exp) + 999999}.${mac}`), false);
+  assert.equal(s.valid(undefined), false);
+  assert.equal(createSessions(Buffer.alloc(32, 2), () => t).valid(tok), false);
+  t += SESSION_TTL_MS + 1;
+  assert.equal(s.valid(tok), false);
+});
+
+test("cookies: read and write", () => {
+  assert.equal(readCookie("a=1; sa_session=x.y; b=2", "sa_session"), "x.y");
+  assert.equal(readCookie(undefined, "sa_session"), undefined);
+  assert.match(sessionCookie("v", 60), /HttpOnly; Secure; SameSite=Strict; Max-Age=60/);
+});
+
+test("sign-in page asks for the current password", async () => {
+  const { signInHtml } = await import("./views.mjs");
+  assert.match(signInHtml(cfg), /current-password/);
+});
