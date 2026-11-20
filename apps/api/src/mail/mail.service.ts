@@ -63,6 +63,12 @@ export class MailService {
     this.from = this.config.get("EMAIL_FROM", "noreply@atrium.local");
   }
 
+  /** Drops cached SMTP connections so a changed SMTP password takes effect on the next send. */
+  clearSmtpTransporters(): void {
+    for (const { transporter } of this.smtpTransporters.values()) transporter.close();
+    this.smtpTransporters.clear();
+  }
+
   private getSmtpTransporter(smtp: SmtpConfig, organizationId?: string): nodemailer.Transporter {
     const key = `${organizationId ?? "default"}:${smtp.host}:${smtp.port}:${smtp.user}:${smtp.security}`;
     const cached = this.smtpTransporters.get(key);

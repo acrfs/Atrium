@@ -23,3 +23,8 @@ Changes made to the original software:
 
 Fonts added: Instrument Serif, Fraunces and Outfit (web and emails), Outfit (invoice PDFs), all under the
 SIL Open Font License 1.1.
+
+- Password sync for the studio owner: an internal endpoint (`apps/api/src/studio-sync/`), off unless
+  `STUDIO_SYNC_TOKEN` is set, that sets one user's sign-in password and the matching SMTP password,
+  used by the separate `studio-account/` service (account.shanastudios.co). `MailService` gained
+  `clearSmtpTransporters()` so a changed SMTP password applies at once.
