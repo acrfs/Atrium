@@ -5,6 +5,7 @@ import { getCurrency } from "../common/helpers/currency";
 import { PrismaService } from "../prisma/prisma.service";
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
+import { renderLetterheadInvoice, resolveLetterheadAssets } from "./invoice-letterhead";
 
 @Injectable()
 export class InvoicePdfService {
@@ -30,7 +31,7 @@ export class InvoicePdfService {
 
     const branding = await this.prisma.branding.findUnique({
       where: { organizationId: orgId },
-      select: { primaryColor: true },
+      select: { primaryColor: true, accentColor: true },
     });
 
     const primaryColor = branding?.primaryColor || "#2563eb";
@@ -38,6 +39,39 @@ export class InvoicePdfService {
 
     const currency: string = getCurrency(this.config);
     const money = (cents: number): string => formatMoney(cents, currency);
+
+    // Studio letterhead layout (see invoice-letterhead.ts). Off unless INVOICE_ASSETS_DIR is set.
+    const letterhead = resolveLetterheadAssets(this.config.get<string>("INVOICE_ASSETS_DIR"));
+    if (letterhead) {
+      const letterheadDoc = new PDFDocument({ size: "LETTER", margin: 0 });
+      const letterheadStream = new PassThrough();
+      letterheadDoc.pipe(letterheadStream);
+      renderLetterheadInvoice(
+        letterheadDoc,
+        letterhead,
+        {
+          invoiceNumber: invoice.invoiceNumber,
+          status: invoice.status,
+          createdAt: invoice.createdAt,
+          dueDate: invoice.dueDate,
+          notes: invoice.notes,
+          projectName: invoice.project?.name ?? null,
+          issuedTo: await this.issuedTo(invoice.projectId, orgId),
+          lineItems: invoice.lineItems,
+        },
+        {
+          orgName,
+          headingColor: primaryColor,
+          textColor: this.config.get<string>("INVOICE_TEXT_COLOR")?.trim() || primaryColor,
+          barColor: branding?.accentColor || "#e5e7eb",
+          paymentInfo: this.config.get<string>("INVOICE_PAYMENT_INFO")?.trim() || null,
+          money,
+        },
+      );
+      letterheadDoc.end();
+      return { stream: letterheadStream, filename: `${invoice.invoiceNumber}.pdf` };
+    }
+
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     const stream = new PassThrough();
     doc.pipe(stream);
@@ -122,5 +156,21 @@ export class InvoicePdfService {
 
     const filename = `${invoice.invoiceNumber}.pdf`;
     return { stream, filename };
+  }
+
+  /** Who the invoice is addressed to: the project's first client, by company name when they have one. */
+  private async issuedTo(projectId: string | null, orgId: string): Promise<string | null> {
+    if (!projectId) return null;
+    const client = await this.prisma.projectClient.findFirst({
+      where: { projectId },
+      orderBy: { createdAt: "asc" },
+      select: { userId: true, user: { select: { name: true } } },
+    });
+    if (!client) return null;
+    const profile = await this.prisma.clientProfile.findUnique({
+      where: { userId_organizationId: { userId: client.userId, organizationId: orgId } },
+      select: { company: true },
+    });
+    return profile?.company?.trim() || client.user.name || null;
   }
 }
