@@ -3,7 +3,8 @@
 import http from "node:http";
 import { readFileSync } from "node:fs";
 import { passwordProblems, verifyTitan, syncPortal, syncVercel, sendConfirmation } from "./sync.mjs";
-import { pageHtml, emailHtml } from "./views.mjs";
+import { pageHtml, signInHtml, emailHtml } from "./views.mjs";
+import { createSessions, readCookie, sessionCookie, SESSION_COOKIE, SESSION_TTL_MS } from "./session.mjs";
 
 const env = process.env;
 const cfg = {
@@ -39,6 +40,9 @@ function allowAttempt(ip) {
 }
 
 let busy = false;
+const sessions = createSessions();
+const signedIn = (req) => sessions.valid(readCookie(req.headers.cookie, SESSION_COOKIE));
+const clientIp = (req) => String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "").split(",")[0].trim();
 
 async function runSync(password) {
   const results = [];
@@ -63,8 +67,9 @@ function readBody(req, limit = 4096) {
   });
 }
 
-function send(res, status, type, body) {
+function send(res, status, type, body, extra = {}) {
   res.writeHead(status, {
+    ...extra,
     "content-type": type,
     "cache-control": "no-store",
     "x-frame-options": "DENY",
@@ -78,7 +83,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost");
     if (req.method === "GET" && url.pathname === "/") {
-      return send(res, 200, "text/html; charset=utf-8", pageHtml(cfg));
+      return send(res, 200, "text/html; charset=utf-8", signedIn(req) ? pageHtml(cfg) : signInHtml(cfg));
     }
     if (req.method === "GET" && url.pathname === "/logo.png") {
       res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
@@ -87,10 +92,28 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/health") {
       return send(res, 200, "text/plain", "ok");
     }
-    if (req.method === "POST" && url.pathname === "/sync") {
+    if (req.method === "POST" && url.pathname === "/login") {
       if (req.headers["content-type"] !== "application/json") return send(res, 415, "application/json", '{"error":"JSON only"}');
-      const ip = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "").split(",")[0].trim();
-      if (!allowAttempt(ip)) {
+      if (!allowAttempt(clientIp(req))) {
+        return send(res, 429, "application/json", JSON.stringify({ error: "Too many tries. Wait 15 minutes and try again." }));
+      }
+      const { password } = JSON.parse(await readBody(req));
+      if (typeof password !== "string" || !password) return send(res, 400, "application/json", '{"error":"Enter your password."}');
+      const titan = await verifyTitan(cfg, password);
+      if (!titan.ok) {
+        const error = titan.authFailed ? "That isn't your current email password." : titan.detail;
+        return send(res, titan.authFailed ? 401 : 502, "application/json", JSON.stringify({ error }));
+      }
+      console.log(new Date().toISOString(), "signed in");
+      return send(res, 200, "application/json", '{"ok":true}', { "set-cookie": sessionCookie(sessions.issue(), SESSION_TTL_MS / 1000) });
+    }
+    if (req.method === "POST" && url.pathname === "/logout") {
+      return send(res, 200, "application/json", '{"ok":true}', { "set-cookie": sessionCookie("", 0) });
+    }
+    if (req.method === "POST" && url.pathname === "/sync") {
+      if (!signedIn(req)) return send(res, 401, "application/json", JSON.stringify({ error: "Your sign-in expired. Refresh the page and sign in again." }));
+      if (req.headers["content-type"] !== "application/json") return send(res, 415, "application/json", '{"error":"JSON only"}');
+      if (!allowAttempt(clientIp(req))) {
         return send(res, 429, "application/json", JSON.stringify({ error: "Too many tries. Wait 15 minutes and try again." }));
       }
       if (busy) return send(res, 409, "application/json", JSON.stringify({ error: "A change is already running. Wait a minute and try again." }));
