@@ -6,7 +6,7 @@ import {
   Html,
   Preview,
   Text,
-} from "@react-email/components";
+} from "../studio";
 import * as React from "react";
 import { OfferButtons, type TrialOfferProps } from "./trial-offer";
 

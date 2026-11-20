@@ -273,7 +273,7 @@ export class NotificationsService {
           );
           await this.mail.send(
             admin.user.email,
-            `Invoice ${invoice.invoiceNumber} paid — ${amount}`,
+            `Invoice ${invoice.invoiceNumber} paid · ${amount}`,
             html,
             invoice.organizationId,
           );
@@ -627,7 +627,7 @@ export class NotificationsService {
           );
           await this.mail.send(
             client.email,
-            `Invoice ${invoice.invoiceNumber} — ${amount}`,
+            `Invoice ${invoice.invoiceNumber} · ${amount}`,
             html,
             invoice.organizationId,
           );
@@ -745,7 +745,7 @@ export class NotificationsService {
           await this.mail.send(
             client.email,
             isDeliverable
-              ? `${doc.title} needs your approval — ${project.name}`
+              ? `${doc.title} needs your approval · ${project.name}`
               : `New ${doc.type} on ${project.name}: ${doc.title}`,
             html,
             doc.organizationId,
@@ -969,7 +969,7 @@ export class NotificationsService {
             client.email,
             isDeliverable
               ? `Reminder: ${doc.title} is waiting for your approval`
-              : `Reminder: ${doc.type} awaiting your response — ${doc.title}`,
+              : `Reminder: ${doc.type} awaiting your response: ${doc.title}`,
             html,
             doc.organizationId,
           );

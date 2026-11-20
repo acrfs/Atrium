@@ -11,6 +11,7 @@ import { insecureCookiesInProduction } from "../common/helpers/secure-cookies";
 import { SMTP_DEFAULT_PORTS } from "@atrium/shared";
 import { resolveSmtpSecurity, smtpErrorMessage, smtpTransportOptions } from "../mail/smtp-security";
 import type { SmtpConfig } from "../mail/smtp-security";
+import { testEmailHtml, withSenderName } from "../mail/studio-mail";
 
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const EMAIL_CONFIG_TTL_MS = 60_000;
@@ -326,19 +327,19 @@ export class SettingsService {
         const { Resend } = await import("resend");
         const resend = new Resend(emailConfig.apiKey);
         await resend.emails.send({
-          from: emailConfig.from,
+          from: withSenderName(emailConfig.from),
           to: recipientEmail,
-          subject: "Atrium - Test Email",
-          html: `<p>This is a test email from Atrium to verify your email configuration is working correctly.</p><p>If you received this, your email settings are configured properly.</p>`,
+          subject: "Shana Studios: test email",
+          html: await testEmailHtml(),
         });
       } else if (emailConfig.provider === "smtp") {
         const nodemailer = await import("nodemailer");
         const transporter = nodemailer.createTransport(smtpTransportOptions(emailConfig.smtp!));
         await transporter.sendMail({
-          from: emailConfig.from,
+          from: withSenderName(emailConfig.from),
           to: recipientEmail,
-          subject: "Atrium - Test Email",
-          html: `<p>This is a test email from Atrium to verify your email configuration is working correctly.</p><p>If you received this, your email settings are configured properly.</p>`,
+          subject: "Shana Studios: test email",
+          html: await testEmailHtml(),
         });
       }
 

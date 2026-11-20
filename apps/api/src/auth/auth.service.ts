@@ -1133,7 +1133,7 @@ export class AuthService {
     const confirmUrl = `${origin}/magic-link${new URL(url).search}`;
     const html = await render(MagicLinkEmail({ url: confirmUrl }));
     const organizationId = await this.getPrimaryOrgForEmail(email);
-    await this.mail.send(email, "Sign in to Atrium", html, organizationId);
+    await this.mail.send(email, "Sign in to Shana Studios", html, organizationId);
   }
 
   /**

@@ -8,7 +8,7 @@ import {
   Preview,
   Section,
   Text,
-} from "@react-email/components";
+} from "../studio";
 import * as React from "react";
 
 interface DecisionOption {

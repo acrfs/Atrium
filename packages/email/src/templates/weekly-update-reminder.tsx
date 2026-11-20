@@ -7,7 +7,7 @@ import {
   Link,
   Preview,
   Text,
-} from "@react-email/components";
+} from "../studio";
 import * as React from "react";
 
 interface ReminderProject {
@@ -41,23 +41,23 @@ export function WeeklyUpdateReminderEmail({
             Time for this week&apos;s client updates
           </Heading>
           <Text style={{ fontSize: "16px", lineHeight: "24px" }}>
-            These {organizationName} projects haven&apos;t had an update in a week. Atrium has
+            These {organizationName} projects haven&apos;t had an update in a week. Your portal has
             drafted each one from what you finished, so it takes a minute to review and send.
           </Text>
           {projects.map((project) => (
             <Text key={project.draftUrl} style={{ fontSize: "15px", lineHeight: "22px", margin: "12px 0" }}>
               <strong>{project.name}</strong>
               <br />
-              <span style={{ color: "#6b7280", fontSize: "13px" }}>{project.lastUpdate}</span>
+              <span style={{ color: "#5f7bbc", fontSize: "13px" }}>{project.lastUpdate}</span>
               <br />
               <Link href={project.draftUrl} style={{ color: "#2d2c80", fontSize: "14px" }}>
                 Review draft update →
               </Link>
             </Text>
           ))}
-          <Text style={{ fontSize: "13px", color: "#6b7280", marginTop: "32px" }}>
+          <Text style={{ fontSize: "13px", color: "#5f7bbc", marginTop: "32px" }}>
             You get this on Fridays when a client project has gone a week without an update.{" "}
-            <Link href={settingsUrl} style={{ color: "#6b7280" }}>
+            <Link href={settingsUrl} style={{ color: "#5f7bbc" }}>
               Turn off these reminders
             </Link>
             .

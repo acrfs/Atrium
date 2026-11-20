@@ -8,7 +8,7 @@ import {
   Preview,
   Section,
   Text,
-} from "@react-email/components";
+} from "../studio";
 import * as React from "react";
 
 interface DigestTaskItem {
@@ -39,7 +39,7 @@ interface MondayDigestEmailProps {
 
 const heading2 = { fontSize: "17px", margin: "28px 0 8px" };
 const item = { fontSize: "15px", lineHeight: "21px", margin: "6px 0" };
-const muted = { color: "#6b7280", fontSize: "13px" };
+const muted = { color: "#5f7bbc", fontSize: "13px" };
 
 export function MondayDigestEmail({
   organizationName,
@@ -70,7 +70,7 @@ export function MondayDigestEmail({
               {tasks.map((t) => (
                 <Text key={`${t.projectName}-${t.title}`} style={item}>
                   {t.title} <span style={muted}>· {t.projectName} · </span>
-                  <span style={{ ...muted, color: t.overdue ? "#b91c1c" : "#6b7280" }}>
+                  <span style={{ ...muted, color: t.overdue ? "#c4492c" : "#5f7bbc" }}>
                     {t.overdue ? `overdue since ${t.due}` : `due ${t.due}`}
                   </span>
                 </Text>
@@ -97,7 +97,7 @@ export function MondayDigestEmail({
                   )}
                 </Text>
               ))}
-              {moreActivity > 0 && <Text style={muted}>and {moreActivity} more in Atrium</Text>}
+              {moreActivity > 0 && <Text style={muted}>and {moreActivity} more in your portal</Text>}
             </Section>
           )}
 
@@ -127,7 +127,7 @@ export function MondayDigestEmail({
                   <Link href={f.url} style={{ color: "#2d2c80" }}>
                     {f.name}
                   </Link>{" "}
-                  <span style={{ ...muted, color: f.overdue ? "#b91c1c" : "#6b7280" }}>
+                  <span style={{ ...muted, color: f.overdue ? "#c4492c" : "#5f7bbc" }}>
                     · {f.overdue ? `Overdue since ${f.due}` : `due ${f.due}`}
                   </span>
                 </Text>
@@ -149,11 +149,11 @@ export function MondayDigestEmail({
               marginTop: "28px",
             }}
           >
-            Open Atrium
+            Open your portal
           </Link>
           <Text style={{ ...muted, marginTop: "32px" }}>
             You get this on Mondays when something is due or changed.{" "}
-            <Link href={settingsUrl} style={{ color: "#6b7280" }}>
+            <Link href={settingsUrl} style={{ color: "#5f7bbc" }}>
               Turn off the Monday digest
             </Link>
             .

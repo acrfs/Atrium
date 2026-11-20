@@ -7,7 +7,7 @@ import {
   Link,
   Preview,
   Text,
-} from "@react-email/components";
+} from "../studio";
 import * as React from "react";
 
 interface DocumentReminderEmailProps {
