@@ -4,7 +4,8 @@
  * Drop-in stand-ins for the @react-email/components the templates use. Each
  * template imports from "../studio" instead of "@react-email/components", so the
  * template files keep their upstream structure while every email gets the
- * studio's paper background, indigo ink, serif headings, pill buttons, S mark
+ * studio's paper background, indigo ink, serif headings (Instrument Serif),
+ * Outfit body text, Fraunces pill buttons (Shana's "Mix", as on the site), S mark
  * and footer. Colours the templates hard-code (Atrium's greys) are mapped onto
  * the studio palette here, in one place.
  */
@@ -42,7 +43,8 @@ export const STUDIO = {
   line: "#ebe5c3",
   alert: "#c4492c",
   serif: "'Instrument Serif', 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif",
-  sans: "'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+  sans: "'Outfit', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+  cta: "'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif",
 } as const;
 
 type Style = React.CSSProperties;
@@ -94,12 +96,25 @@ export function Head({ children }: { children?: React.ReactNode }) {
         fontStyle="normal"
       />
       <Font
-        fontFamily="DM Sans"
+        fontFamily="Fraunces"
+        fallbackFontFamily="Georgia"
+        webFont={{
+          url: "https://fonts.gstatic.com/s/fraunces/v38/6NUu8FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0K7iN7iQcIfJD58njt0oc7qv8.woff2",
+          format: "woff2",
+        }}
+        fontWeight={600}
+        fontStyle="normal"
+      />
+      {/* Each Font also sets a page-wide default, so Outfit (body text) goes last. */}
+      <Font
+        fontFamily="Outfit"
         fallbackFontFamily="Helvetica"
-        webFont={{ url: "https://fonts.gstatic.com/s/dmsans/v17/rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K6z9mXg.woff2", format: "woff2" }}
+        webFont={{ url: "https://fonts.gstatic.com/s/outfit/v15/QGYvz_MVcBeNP4NJtEtq.woff2", format: "woff2" }}
         fontWeight={400}
         fontStyle="normal"
       />
+      {/* Bold words use the soft serif, as on the site. */}
+      <style>{`strong,b{font-family:${STUDIO.cta};font-weight:600;letter-spacing:0;}`}</style>
       {children}
     </REHead>
   );
@@ -260,11 +275,12 @@ export function Link({ children, style, href }: { children?: React.ReactNode; st
           display: "inline-block",
           backgroundColor: STUDIO.indigo,
           color: STUDIO.paper,
-          fontFamily: STUDIO.sans,
+          fontFamily: STUDIO.cta,
           fontSize: "15px",
-          fontWeight: 500,
+          fontWeight: 600,
+          fontVariationSettings: "'SOFT' 100, 'WONK' 0",
           lineHeight: "20px",
-          letterSpacing: "0.01em",
+          letterSpacing: "0",
           padding: "14px 28px",
           borderRadius: "999px",
           textDecoration: "none",

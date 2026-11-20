@@ -18,5 +18,5 @@ Changes made to the original software:
   (`packages/email/src/templates/studio-notice.tsx`, `apps/api/src/mail/studio-mail.ts`),
   an optional sender name (`EMAIL_FROM_NAME`), and "Atrium" removed from subjects and wording.
 
-Fonts added: DM Sans and Instrument Serif (web), Outfit (invoice PDFs), all under the
+Fonts added: Instrument Serif, Fraunces and Outfit (web and emails), Outfit (invoice PDFs), all under the
 SIL Open Font License 1.1.

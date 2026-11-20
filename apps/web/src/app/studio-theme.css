@@ -3,12 +3,21 @@
  * Tokens mirror website/site/src/index.css. Loaded after globals.css.
  */
 
+/* Shana's "Mix", as on the site: Instrument Serif headings, Fraunces for bold
+   words and buttons, Outfit for body text. */
 @font-face {
-  font-family: "DM Sans";
+  font-family: "Outfit";
   font-style: normal;
-  font-weight: 100 1000;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("/fonts/dm-sans-latin.woff2") format("woff2");
+  src: url("/fonts/outfit-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin.woff2") format("woff2");
 }
 @font-face {
   font-family: "Instrument Serif";
@@ -39,7 +48,8 @@
   --paper: #fffdf2;
   --table: #fefbe1;
   --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sans: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cta: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --primary: #2d2c80;
@@ -91,6 +101,19 @@ h1.text-3xl { font-size: 3rem; line-height: 1.02; }
   font-weight: 600 !important;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
+}
+
+/* Bold words and buttons use the soft serif, as on the site. */
+strong,
+b,
+button,
+.font-semibold:not(h1, h2, h3),
+.font-bold:not(h1, h2, h3),
+:is(a, [role="button"])[class~="bg-[var(--primary)]"] {
+  font-family: var(--cta);
+  font-weight: 620;
+  font-variation-settings: "SOFT" 100, "WONK" 0;
+  letter-spacing: 0;
 }
 
 :focus-visible {
