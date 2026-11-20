@@ -16,6 +16,15 @@ export function passwordProblems(password) {
   return problems;
 }
 
+/** The username is the mailbox: either the full address or the part before
+ * the @, any letter case. */
+export function usernameMatches(username, mailbox) {
+  if (typeof username !== "string") return false;
+  const u = username.trim().toLowerCase();
+  const m = String(mailbox).toLowerCase();
+  return u.length > 0 && (u === m || u === m.split("@")[0]);
+}
+
 /** Signs in to Titan's mail server with the password. This is the proof that
  * the person changed the mailbox password themselves, so it gates every other step. */
 export async function verifyTitan(cfg, password) {

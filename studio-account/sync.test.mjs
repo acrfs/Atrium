@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { passwordProblems, syncVercel, syncPortal } from "./sync.mjs";
+import { passwordProblems, syncVercel, syncPortal, usernameMatches } from "./sync.mjs";
 import { pageHtml, emailHtml } from "./views.mjs";
 
 const cfg = { vercelToken: "t", vercelTeam: "acrfs-projects", vercelProject: "shana-studios", vercelEnvKey: "SMTP_PASS",
@@ -96,7 +96,22 @@ test("cookies: read and write", () => {
   assert.match(sessionCookie("v", 60), /HttpOnly; Secure; SameSite=Strict; Max-Age=60/);
 });
 
-test("sign-in page asks for the current password", async () => {
+test("sign-in page asks for a username and password and shows no email", async () => {
   const { signInHtml } = await import("./views.mjs");
-  assert.match(signInHtml(cfg), /current-password/);
+  const html = signInHtml();
+  assert.match(html, /Account settings/);
+  assert.match(html, /autocomplete="username"/);
+  assert.match(html, /current-password/);
+  assert.doesNotMatch(html, /shanastudios\.co\b(?!\/)|shana@/);
+});
+
+test("username is the mailbox, full or short, any case", () => {
+  const m = "shana@shanastudios.co";
+  assert.equal(usernameMatches("shana@shanastudios.co", m), true);
+  assert.equal(usernameMatches(" Shana ", m), true);
+  assert.equal(usernameMatches("SHANA@ShanaStudios.co", m), true);
+  assert.equal(usernameMatches("hello", m), false);
+  assert.equal(usernameMatches("shana@gmail.com", m), false);
+  assert.equal(usernameMatches("", m), false);
+  assert.equal(usernameMatches(undefined, m), false);
 });

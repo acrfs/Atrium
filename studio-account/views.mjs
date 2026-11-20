@@ -65,10 +65,10 @@ const head = (title) => `<!doctype html>
 `;
 
 export function pageHtml(cfg) {
-  return `${head("Your password · Shana Studios")}<main>
+  return `${head("Account settings · Shana Studios")}<main>
   <img class="mark" src="/logo.png" alt="Shana Studios">
-  <h1>Change your password</h1>
-  <p class="lead">One password for your studio email, your client portal and your website's contact form. Change it in two steps.</p>
+  <h1>Account settings</h1>
+  <p class="lead">Change your password. It's the same one for your studio email, your client portal and your website's contact form, and changing it takes two steps.</p>
   <ol class="steps">
     <li>
       <h2>Change it in your mailbox</h2>
@@ -121,15 +121,16 @@ f.addEventListener("submit", async (e) => {
 </html>`;
 }
 
-export function signInHtml(cfg) {
-  return `${head("Sign in · Shana Studios")}<main>
+export function signInHtml() {
+  return `${head("Account settings · Shana Studios")}<main>
   <img class="mark" src="/logo.png" alt="Shana Studios">
-  <h1>Your password</h1>
-  <p class="lead">Sign in with your current email password for ${esc(cfg.mailbox)}.</p>
+  <h1>Account settings</h1>
+  <p class="lead">Sign in with your Shana Studios username and password.</p>
   <form id="f" autocomplete="on">
-    <input type="text" name="username" autocomplete="username" value="${esc(cfg.mailbox)}" hidden readonly>
-    <label for="p">Current password</label>
-    <input id="p" type="password" autocomplete="current-password" required maxlength="128">
+    <label for="u">Username</label>
+    <input id="u" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="128">
+    <label for="p">Password</label>
+    <input id="p" name="password" type="password" autocomplete="current-password" required maxlength="128">
     <button id="go" type="submit">Sign in</button>
   </form>
   <div id="out" aria-live="polite"></div>
@@ -141,7 +142,7 @@ f.addEventListener("submit", async (e) => {
   e.preventDefault();
   go.disabled = true; go.textContent = "Checking";
   try {
-    const r = await fetch("/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: document.getElementById("p").value }) });
+    const r = await fetch("/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: document.getElementById("u").value, password: document.getElementById("p").value }) });
     if (r.ok) { location.reload(); return; }
     const j = await r.json();
     out.innerHTML = '<div class="msg err">' + esc(j.error || "Something went wrong.") + '</div>';
