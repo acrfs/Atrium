@@ -183,7 +183,7 @@ export class IntegrationsService {
       organizationId,
       projectId: null,
       actorId: userId,
-      title: "Test message from Atrium",
+      title: "Test message from Shana Studios",
       detail: `If you can see this, "${destination.name}" is connected.`,
       path: "/dashboard/settings/integrations",
     });

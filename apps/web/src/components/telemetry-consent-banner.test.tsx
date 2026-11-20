@@ -4,7 +4,7 @@ import { TelemetryConsentBanner } from "./telemetry-consent-banner";
 
 describe("TelemetryConsentBanner", () => {
   it("asks an ordinary workspace about crash reports", () => {
-    expect(renderToStaticMarkup(<TelemetryConsentBanner />)).toContain("Help improve Atrium");
+    expect(renderToStaticMarkup(<TelemetryConsentBanner />)).toContain("Help improve the portal");
   });
 
   it("never asks a demo visitor", () => {

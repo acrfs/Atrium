@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { STUDIO_NAME, StudioMark } from "@/lib/studio";
+import { STUDIO_CONTACT_URL, STUDIO_NAME, StudioMark } from "@/lib/studio";
+import { useAppConfig } from "@/lib/app-config";
 import { setActiveOrgAndRedirect } from "@/lib/api";
 import { destinationAfterSignIn } from "@/lib/two-factor-redirect";
 import { track } from "@/lib/track";
@@ -23,6 +24,8 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ orgName, logoSrc, hideLogo, onCustomDomain }: LoginFormProps) {
+  // Invite only: new visitors are pointed at the studio's contact chat instead of a signup form.
+  const signupsDisabled: boolean = useAppConfig()?.signupEnabled === false;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -334,12 +337,21 @@ export function LoginForm({ orgName, logoSrc, hideLogo, onCustomDomain }: LoginF
           </>
         )}
 
-        <p className="text-center text-sm text-[var(--muted-foreground)]">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-[var(--primary)] hover:underline">
-            Sign up
-          </Link>
-        </p>
+        {signupsDisabled ? (
+          <p className="text-center text-sm text-[var(--muted-foreground)]">
+            New to {STUDIO_NAME}?{" "}
+            <a href={STUDIO_CONTACT_URL} className="text-[var(--primary)] hover:underline">
+              Start a project
+            </a>
+          </p>
+        ) : (
+          <p className="text-center text-sm text-[var(--muted-foreground)]">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-[var(--primary)] hover:underline">
+              Sign up
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );

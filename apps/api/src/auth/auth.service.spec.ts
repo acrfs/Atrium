@@ -973,7 +973,7 @@ describe("AuthService two-factor wiring", () => {
   it("registers the two-factor plugin with passwordless enable and encrypted codes", () => {
     const plugin: AuthPlugin | undefined = authOptions().plugins.find((p) => p.id === "two-factor");
     expect(plugin).toBeDefined();
-    expect(plugin?.options?.issuer).toBe("Atrium");
+    expect(plugin?.options?.issuer).toBe("Shana Studios");
     expect(plugin?.options?.allowPasswordless).toBe(true);
     expect(plugin?.options?.backupCodeOptions).toEqual({ amount: 10, length: 10, storeBackupCodes: "encrypted" });
   });
@@ -1038,7 +1038,7 @@ describe("AuthService passkey wiring", () => {
     webUrl = "https://app.example.com";
     expect(passkeyPlugin()?.options).toEqual({
       rpID: "app.example.com",
-      rpName: "Atrium",
+      rpName: "Shana Studios",
       origin: "https://app.example.com",
       authenticatorSelection: { residentKey: "required", userVerification: "required" },
     });

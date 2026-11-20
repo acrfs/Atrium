@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { track, trackThenNavigate } from "@/lib/track";
 import { useAppConfig } from "@/lib/app-config";
+import { STUDIO_CONTACT_URL } from "@/lib/studio";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -144,24 +145,9 @@ export default function SignupPage() {
     }
   };
 
+  // The portal is invite only. New visitors go to the studio's contact chat.
   if (signupsDisabled) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <h1 className="text-2xl font-bold">Signups are disabled</h1>
-          <p className="text-[var(--muted-foreground)]">
-            This Atrium instance isn&apos;t accepting new signups. If you already
-            have an account, you can sign in.
-          </p>
-          <Link
-            href="/login"
-            className="inline-block py-2 px-4 bg-[var(--primary)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            Go to sign in
-          </Link>
-        </div>
-      </div>
-    );
+    return <StartAProject />;
   }
 
   return (
@@ -349,6 +335,35 @@ export default function SignupPage() {
             </Link>
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Sends new visitors to the contact chat on the studio's site, with a link in case the redirect is blocked. */
+function StartAProject() {
+  useEffect(() => {
+    window.location.replace(STUDIO_CONTACT_URL);
+  }, []);
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-sm space-y-6 text-center">
+        <h1 className="text-2xl font-bold">Start a project</h1>
+        <p className="text-[var(--muted-foreground)]">
+          New projects start with a quick chat on the Shana Studios site. Taking you there now.
+        </p>
+        <a
+          href={STUDIO_CONTACT_URL}
+          className="inline-block py-2 px-4 bg-[var(--primary)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+        >
+          Go to the contact chat
+        </a>
+        <p className="text-sm text-[var(--muted-foreground)]">
+          Already a client?{" "}
+          <Link href="/login" className="text-[var(--primary)] hover:underline">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ function slackBody(p: IntegrationPayload): object {
     { type: "context", elements: [{ type: "mrkdwn", text: slackEscape(context) }] },
     {
       type: "actions",
-      elements: [{ type: "button", text: { type: "plain_text", text: "View in Atrium" }, url: p.url }],
+      elements: [{ type: "button", text: { type: "plain_text", text: "Open in the portal" }, url: p.url }],
     },
   );
   return { text: slackEscape(p.title), blocks };
@@ -37,7 +37,7 @@ function slackBody(p: IntegrationPayload): object {
 
 function discordBody(p: IntegrationPayload): object {
   return {
-    username: "Atrium",
+    username: "Shana Studios",
     // Client-written text must never turn into @everyone or role pings.
     allowed_mentions: { parse: [] },
     embeds: [

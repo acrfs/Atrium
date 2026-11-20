@@ -626,7 +626,7 @@ export class AuthService {
           },
         }),
         twoFactor({
-          issuer: "Atrium",
+          issuer: "Shana Studios",
           twoFactorPage: "/login/2fa",
           // Clients who only sign in by email link have no password to give.
           allowPasswordless: true,
@@ -639,7 +639,7 @@ export class AuthService {
           ? [
               passkey({
                 rpID: relyingParty.rpID,
-                rpName: "Atrium",
+                rpName: "Shana Studios",
                 origin: relyingParty.origin,
                 authenticatorSelection: { residentKey: "required", userVerification: "required" },
               }),

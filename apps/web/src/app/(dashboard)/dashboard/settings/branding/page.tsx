@@ -19,7 +19,7 @@ interface Branding {
 }
 
 const COLOR_PRESETS = [
-  { name: "Atrium teal", hex: "#006B68" },
+  { name: "Teal", hex: "#006B68" },
   { name: "Cobalt", hex: "#2449C9" },
   { name: "Plum", hex: "#7A2E8E" },
   { name: "Burnt orange", hex: "#C2410C" },
@@ -182,7 +182,7 @@ export default function BrandingSettingsPage(): React.ReactElement {
           Your client portal
         </h1>
         <p className="text-sm text-[var(--muted-foreground)] mt-1">
-          Clients see your logo, color and domain. Atrium stays out of sight.
+          Clients see your logo, color and domain. The portal software stays out of sight.
         </p>
       </div>
 

@@ -21,7 +21,7 @@ export function RecoveryCodes({ codes }: RecoveryCodesProps): React.ReactElement
   };
 
   const download = (): void => {
-    const url: string = URL.createObjectURL(new Blob([`Atrium recovery codes\n\n${text}\n`], { type: "text/plain" }));
+    const url: string = URL.createObjectURL(new Blob([`Shana Studios recovery codes\n\n${text}\n`], { type: "text/plain" }));
     const a: HTMLAnchorElement = document.createElement("a");
     a.href = url;
     a.download = "atrium-recovery-codes.txt";

@@ -166,7 +166,7 @@ export function PasskeysSection({ status, onChange }: PasskeysSectionProps): Rea
       {status.passkeysOffered &&
         (onCustomDomain ? (
           <p className="text-sm text-[var(--muted-foreground)]">
-            Passkeys belong to the main Atrium address. Open Settings there to add one.
+            Passkeys belong to the main portal address. Open Settings there to add one.
           </p>
         ) : (
           <AddPasskey onAdded={changed} />

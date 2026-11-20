@@ -143,7 +143,7 @@ export function TwoFactorForm({ onCustomDomain, webUrl }: TwoFactorFormProps): R
         </div>
         {passkeyElsewhere && (
           <p className="p-3 text-sm rounded-lg border border-[var(--border)]">
-            Passkeys work on the main Atrium address.{" "}
+            Passkeys work on the main portal address.{" "}
             <a href={`${webUrl}/login`} className="text-[var(--primary)] hover:underline">
               Sign in at {webUrl.replace(/^https?:\/\//, "")}
             </a>{" "}

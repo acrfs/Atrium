@@ -19,7 +19,7 @@ describe("usageOfferText", () => {
 
   it("falls back to a plain line when nothing is shared yet", () => {
     expect(usageOfferText({ sharedProjects: 0, clients: 2, updates: 5 }, PRICING)).toBe(
-      `You've been putting Atrium to work this week.${TAIL}`,
+      `You've been putting the portal to work this week.${TAIL}`,
     );
   });
 });
@@ -33,7 +33,7 @@ describe("usageOfferText pricing", () => {
 
   it("doesn't mention Lifetime when it can't be bought", () => {
     expect(usageOfferText({ sharedProjects: 0, clients: 0, updates: 0 }, { proMonthlyCents: 2900, lifetimeAvailable: false })).toBe(
-      "You've been putting Atrium to work this week. Keep Pro for $29/mo.",
+      "You've been putting the portal to work this week. Keep Pro for $29/mo.",
     );
   });
 });

@@ -114,7 +114,7 @@ export function ConsentForm(): React.ReactElement {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold break-words">Connect {clientName} to Atrium</h1>
+      <h1 className="text-xl font-semibold break-words">Connect {clientName} to Shana Studios</h1>
 
       <div className="space-y-1 rounded-md border border-[var(--border)] p-3">
         <p className="text-sm font-medium break-words">{destinationLine(info.redirect)}</p>

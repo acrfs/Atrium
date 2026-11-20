@@ -19,7 +19,7 @@ export default function BillingPage(): React.ReactElement {
       ) : (
         <div className="pb-2">
           <p className="text-sm text-[var(--muted-foreground)]">
-            Atrium subscription billing is not enabled on this deployment.
+            Subscription billing is not enabled on this portal.
           </p>
         </div>
       )}

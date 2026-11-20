@@ -188,7 +188,7 @@ export default function OrganizationsSettingsPage(): React.ReactElement {
         <div>
           <h2 className="text-lg font-semibold">Create an organization</h2>
           <p className="text-sm text-[var(--muted-foreground)]">
-            Run a second company from this same Atrium. You become its owner.
+            Run a second company from this same portal. You become its owner.
           </p>
         </div>
 

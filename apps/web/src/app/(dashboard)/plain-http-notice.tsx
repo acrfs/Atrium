@@ -44,7 +44,7 @@ export function PlainHttpNotice(): React.ReactElement | null {
         </svg>
       </button>
       <div className="text-sm text-amber-800 pr-6 space-y-1">
-        <p className="font-medium">Atrium is running over plain HTTP</p>
+        <p className="font-medium">The portal is running over plain HTTP</p>
         <p>
           Passwords, sign-in sessions and client data are sent unencrypted, so anyone on the same
           network could read them. That&apos;s fine on a trusted home network or VPN. For anything

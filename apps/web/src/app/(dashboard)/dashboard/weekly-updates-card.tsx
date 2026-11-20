@@ -35,7 +35,7 @@ export function WeeklyUpdatesCard(): React.ReactElement | null {
         <h2 className="text-sm sm:text-base font-semibold text-[var(--foreground)]">Weekly updates</h2>
       </div>
       <p className="text-sm text-[var(--muted-foreground)]">
-        These clients haven&apos;t heard from you in a week. Atrium drafts the update from what you finished.
+        These clients haven&apos;t heard from you in a week. The portal drafts the update from what you finished.
       </p>
       <ul className="space-y-2">
         {due.map((p) => (

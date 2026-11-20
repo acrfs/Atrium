@@ -60,6 +60,6 @@ export const URL_HELP: Record<IntegrationType, { placeholder: string; help: stri
   },
   webhook: {
     placeholder: "https://hooks.zapier.com/…",
-    help: "Atrium POSTs signed JSON to this URL. Works with Zapier, Make, n8n or your own code.",
+    help: "The portal POSTs signed JSON to this URL. Works with Zapier, Make, n8n or your own code.",
   },
 };

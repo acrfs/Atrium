@@ -81,7 +81,7 @@ export function ConnectCard({ oauthEnabled }: { oauthEnabled: boolean }): React.
           </p>
         ) : (
           <p className="text-sm text-[var(--muted-foreground)]">
-            Atrium speaks the Model Context Protocol (MCP). Point any MCP client at this URL and send an
+            The portal speaks the Model Context Protocol (MCP). Point any MCP client at this URL and send an
             API key as a bearer token. Works with Claude, OpenAI, local models, and agent frameworks.
           </p>
         )}

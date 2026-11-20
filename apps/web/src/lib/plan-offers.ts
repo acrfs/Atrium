@@ -38,7 +38,7 @@ export function usageOfferText(activity: WorkspaceActivity, pricing: OfferPricin
   const lead: string =
     activity.sharedProjects > 0 && activity.clients > 0
       ? `You've shared ${plural(activity.sharedProjects, "project")} with ${plural(activity.clients, "client")}.`
-      : "You've been putting Atrium to work this week.";
+      : "You've been putting the portal to work this week.";
   const pro: string = `Keep Pro for $${(pricing.proMonthlyCents / 100).toFixed(0)}/mo`;
   return pricing.lifetimeAvailable ? `${lead} ${pro}, or get Lifetime while seats last.` : `${lead} ${pro}.`;
 }

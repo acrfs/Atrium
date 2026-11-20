@@ -143,7 +143,7 @@ function SetupWizardContent() {
             <>
               <h1 className="text-2xl font-bold">
                 {isFirstOrg
-                  ? "Welcome to Atrium"
+                  ? "Welcome to your portal"
                   : `Set up ${orgName || "your new organization"}`}
               </h1>
               <p className="text-[var(--muted-foreground)] mt-1">
