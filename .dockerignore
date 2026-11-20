@@ -5,6 +5,7 @@ node_modules
 !.env.example
 *.md
 !CHANGELOG.md
+!MODIFICATIONS.md
 e2e
 test-results
 playwright-report

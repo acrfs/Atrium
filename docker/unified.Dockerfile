@@ -59,6 +59,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
+# Studio invoice letterhead and fonts (enable with INVOICE_ASSETS_DIR=/app/apps/api/assets/invoice-shana)
+COPY --from=build /app/apps/api/assets ./apps/api/assets
+COPY --from=build /app/MODIFICATIONS.md /app/LICENSE ./
 COPY --from=build /app/packages/database ./packages/database
 COPY --from=build /app/packages/shared ./packages/shared
 COPY --from=build /app/packages/email ./packages/email
