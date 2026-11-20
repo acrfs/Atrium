@@ -2,7 +2,7 @@
 // here once; this copies it to the portal and the website.
 import http from "node:http";
 import { readFileSync } from "node:fs";
-import { passwordProblems, verifyTitan, syncPortal, syncVercel, sendConfirmation } from "./sync.mjs";
+import { passwordProblems, usernameMatches, verifyTitan, syncPortal, syncVercel, sendConfirmation } from "./sync.mjs";
 import { pageHtml, signInHtml, emailHtml } from "./views.mjs";
 import { createSessions, readCookie, sessionCookie, SESSION_COOKIE, SESSION_TTL_MS } from "./session.mjs";
 
@@ -83,7 +83,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost");
     if (req.method === "GET" && url.pathname === "/") {
-      return send(res, 200, "text/html; charset=utf-8", signedIn(req) ? pageHtml(cfg) : signInHtml(cfg));
+      return send(res, 200, "text/html; charset=utf-8", signedIn(req) ? pageHtml(cfg) : signInHtml());
     }
     if (req.method === "GET" && url.pathname === "/logo.png") {
       res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
@@ -97,13 +97,16 @@ const server = http.createServer(async (req, res) => {
       if (!allowAttempt(clientIp(req))) {
         return send(res, 429, "application/json", JSON.stringify({ error: "Too many tries. Wait 15 minutes and try again." }));
       }
-      const { password } = JSON.parse(await readBody(req));
-      if (typeof password !== "string" || !password) return send(res, 400, "application/json", '{"error":"Enter your password."}');
-      const titan = await verifyTitan(cfg, password);
-      if (!titan.ok) {
-        const error = titan.authFailed ? "That isn't your current email password." : titan.detail;
-        return send(res, titan.authFailed ? 401 : 502, "application/json", JSON.stringify({ error }));
+      const { username, password } = JSON.parse(await readBody(req));
+      if (typeof username !== "string" || !username.trim() || typeof password !== "string" || !password) {
+        return send(res, 400, "application/json", '{"error":"Enter your username and password."}');
       }
+      // Same answer for a wrong username or a wrong password, so the page
+      // doesn't tell anyone which username is real.
+      const wrong = () => send(res, 401, "application/json", '{"error":"That username and password don\'t match."}');
+      if (!usernameMatches(username, cfg.mailbox)) return wrong();
+      const titan = await verifyTitan(cfg, password);
+      if (!titan.ok) return titan.authFailed ? wrong() : send(res, 502, "application/json", JSON.stringify({ error: titan.detail }));
       console.log(new Date().toISOString(), "signed in");
       return send(res, 200, "application/json", '{"ok":true}', { "set-cookie": sessionCookie(sessions.issue(), SESSION_TTL_MS / 1000) });
     }
