@@ -1,0 +1,312 @@
+/*
+ * Studio theme: makes the portal follow the Shana Studios portfolio site.
+ * Tokens mirror website/site/src/index.css. Loaded after globals.css.
+ */
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("/fonts/dm-sans-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif-latin-italic.woff2") format("woff2");
+}
+
+/* One light, brand-colored theme. The three selectors cover the default,
+   a stored "dark" choice, and a dark operating system setting. */
+:root,
+:root.dark,
+:root:not(.light) {
+  --indigo: #2d2c80;
+  --peri: #5f7bbc;
+  --peri-light: #8da3e0;
+  --pink: #efbdd7;
+  --coral: #f48863;
+  --cream: #fdf8c3;
+  --paper: #fffdf2;
+  --table: #fefbe1;
+  --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --primary: #2d2c80;
+  --background: #fffdf2;
+  --foreground: #2d2c80;
+  --muted: #f8f3d3;
+  --muted-foreground: #5b5a99;
+  --border: #e3dfc9;
+  --radius: 0.875rem;
+  color-scheme: light;
+}
+
+body {
+  background: var(--paper);
+  color: var(--indigo);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Headings in the portfolio's serif. Tailwind's bold utilities are overridden
+   because Instrument Serif has a single weight. */
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 400 !important;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+/* The serif runs small, so headings step up one size to keep their presence. */
+h2,
+h3 {
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+h1.text-xl { font-size: 1.75rem; line-height: 1.1; }
+h1.text-2xl { font-size: 2.5rem; line-height: 1.05; }
+h1.text-3xl { font-size: 3rem; line-height: 1.02; }
+:is(h2, h3).text-xs { font-size: 1rem; line-height: 1.2; }
+:is(h1, h2, h3).text-sm { font-size: 1.25rem; line-height: 1.2; }
+:is(h1, h2, h3).text-base { font-size: 1.375rem; line-height: 1.2; }
+:is(h1, h2, h3).text-lg { font-size: 1.625rem; line-height: 1.15; }
+:is(h2, h3).text-xl { font-size: 1.875rem; line-height: 1.1; }
+:is(h2, h3).text-2xl { font-size: 2.25rem; line-height: 1.05; }
+:is(h2, h3).text-3xl { font-size: 2.75rem; line-height: 1.02; }
+/* Small caps style labels stay in the sans. */
+:is(h2, h3).uppercase {
+  font-family: var(--sans);
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--pink);
+  color: var(--indigo);
+}
+
+/* Pill buttons, as on the portfolio. Filled buttons take cream text. */
+:is(button, a, [role="button"])[class~="bg-[var(--primary)]"],
+:is(button, a, [role="button"]).bg-blue-600,
+:is(button, a, [role="button"]).bg-blue-500 {
+  border-radius: 999px;
+  color: var(--cream);
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  transition: transform 0.25s var(--ease), background 0.2s, opacity 0.2s;
+}
+:is(button, a, [role="button"])[class~="bg-[var(--primary)]"]:hover:not(:disabled) {
+  background: #3a39a0;
+  opacity: 1;
+}
+/* Outlined and quiet single-line buttons become pills too. */
+:is(button, a)[class~="border"][class*="rounded-"]:not(.text-left):not(.block):not(.flex-col):not(.grid),
+button[class*="rounded-"][class*="px-"]:not(.text-left):not(.block):not(.flex-col):not(.grid):not(.w-full) {
+  border-radius: 999px;
+}
+
+/* Fields sit on white so they read as inputs on the paper background. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+textarea,
+select {
+  background-color: #fff;
+  border-radius: 0.875rem;
+}
+input::placeholder,
+textarea::placeholder {
+  color: rgb(45 44 128 / 0.42);
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: var(--indigo);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--indigo);
+}
+
+/* ---------- Glass pill nav (client portal and welcome page) ---------- */
+
+.studio-nav-wrap {
+  position: sticky;
+  top: clamp(12px, 2.4vw, 28px);
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  pointer-events: none;
+}
+.studio-nav-wrap.is-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+}
+.studio-nav {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2.2vw, 28px);
+  padding: 8px 8px 8px 18px;
+  border-radius: 999px;
+  color: var(--indigo);
+  font-weight: 500;
+  font-size: 16px;
+  background: rgb(255 255 255 / 0.5);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow:
+    0 10px 30px rgb(45 44 128 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  max-width: 100%;
+}
+.studio-nav a {
+  text-decoration: none;
+}
+.studio-nav-logo {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.studio-nav-logo img {
+  height: 30px;
+  width: 30px;
+  object-fit: contain;
+}
+.studio-nav-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2.2vw, 28px);
+}
+.studio-nav-links a {
+  padding: 6px 2px;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.studio-nav-links a:hover {
+  opacity: 0.65;
+}
+.studio-nav-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.studio-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  background: var(--indigo);
+  color: var(--cream);
+  font-weight: 500;
+  font-size: 16px;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: transform 0.25s var(--ease), background 0.2s;
+}
+.studio-cta:hover {
+  transform: scale(1.04);
+  background: #3a39a0;
+}
+.studio-cta:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Welcome page hero ---------- */
+
+.studio-hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px clamp(20px, 5.5vw, 96px) 96px;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(180deg, var(--peri-light) 0%, var(--peri) 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+.studio-hero-light {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60% 55% at 38% 18%, rgb(255 255 255 / 0.42), transparent 70%),
+    radial-gradient(38% 40% at 86% 88%, rgb(239 189 215 / 0.5), transparent 70%);
+}
+.studio-hero-logo {
+  width: min(260px, 48vw, 34svh);
+  aspect-ratio: 1;
+  margin-bottom: clamp(12px, 3svh, 32px);
+  filter: drop-shadow(0 34px 34px rgb(45 44 128 / 0.34)) drop-shadow(0 6px 8px rgb(45 44 128 / 0.2));
+}
+.studio-hero-logo svg {
+  width: 100%;
+  height: 100%;
+}
+.studio-hero h1 {
+  font-size: clamp(56px, 10.5vw, 132px);
+  line-height: 1;
+}
+.studio-hero-sub {
+  max-width: 40ch;
+  margin-top: 14px;
+  font-size: clamp(17px, 1.6vw, 21px);
+  color: rgb(255 255 255 / 0.92);
+  text-wrap: balance;
+}
+.studio-hero .studio-cta {
+  margin-top: clamp(20px, 4svh, 36px);
+  font-size: 17px;
+  padding: 13px 26px;
+}
+.studio-hero-foot {
+  position: absolute;
+  bottom: 28px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: rgb(255 255 255 / 0.85);
+}
+.studio-hero-foot.is-left { left: clamp(20px, 5.5vw, 96px); }
+.studio-hero-foot.is-right { right: clamp(20px, 5.5vw, 96px); }
+a.studio-hero-foot:hover { color: #fff; }
+@media (max-width: 560px) {
+  .studio-hero-foot.is-right { display: none; }
+  .studio-hero-foot.is-left { left: 0; right: 0; }
+}
+
+/* ---------- Sign-in and other signed-out pages ---------- */
+
+.studio-auth {
+  min-height: 100svh;
+  background:
+    radial-gradient(50% 40% at 85% 8%, rgb(239 189 215 / 0.45), transparent 70%),
+    radial-gradient(45% 40% at 8% 92%, rgb(141 163 224 / 0.35), transparent 70%),
+    var(--paper);
+}

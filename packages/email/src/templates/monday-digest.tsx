@@ -86,7 +86,7 @@ export function MondayDigestEmail({
               </Text>
               {activity.map((a) => (
                 <Text key={a.url + a.title} style={item}>
-                  <Link href={a.url} style={{ color: "#006b68" }}>
+                  <Link href={a.url} style={{ color: "#2d2c80" }}>
                     {a.title}
                   </Link>
                   {a.message && (
@@ -108,7 +108,7 @@ export function MondayDigestEmail({
               </Text>
               {overdueInvoices.map((inv) => (
                 <Text key={inv.invoiceNumber} style={item}>
-                  <Link href={inv.url} style={{ color: "#006b68" }}>
+                  <Link href={inv.url} style={{ color: "#2d2c80" }}>
                     {inv.invoiceNumber}
                   </Link>{" "}
                   <span style={muted}>· due {inv.due}</span>
@@ -124,7 +124,7 @@ export function MondayDigestEmail({
               </Text>
               {followUps.map((f) => (
                 <Text key={f.url} style={item}>
-                  <Link href={f.url} style={{ color: "#006b68" }}>
+                  <Link href={f.url} style={{ color: "#2d2c80" }}>
                     {f.name}
                   </Link>{" "}
                   <span style={{ ...muted, color: f.overdue ? "#b91c1c" : "#6b7280" }}>
@@ -141,7 +141,7 @@ export function MondayDigestEmail({
             style={{
               display: "inline-block",
               padding: "12px 24px",
-              backgroundColor: "#006b68",
+              backgroundColor: "#2d2c80",
               color: "#ffffff",
               borderRadius: "6px",
               textDecoration: "none",

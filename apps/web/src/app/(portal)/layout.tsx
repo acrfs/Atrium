@@ -15,6 +15,7 @@ import { serverFetch } from "@/lib/server-api";
 import { twoFactorGatePage } from "@/lib/two-factor-gate";
 import { logoSrc as buildLogoSrc } from "@/lib/logo-src";
 import { SessionProvider } from "@/lib/session-context";
+import { STUDIO_NAME, StudioMark } from "@/lib/studio";
 
 async function getBranding() {
   try {
@@ -101,35 +102,34 @@ export default async function PortalLayout({
         <div
           style={
             {
-              "--primary": branding?.primaryColor || "#006b68",
+              "--primary": branding?.primaryColor || "#2d2c80",
             } as React.CSSProperties
           }
         >
           <DynamicFavicon href={logoSrc || "/icon-64.png"} />
           <PreviewBanner />
-          <header className="border-b border-[var(--border)] px-4 sm:px-6 py-4 flex items-center gap-2 sm:gap-3">
-            {!branding?.hideLogo && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={logoSrc || "/icon-64.png"} alt="Logo" className="h-8 w-8 object-contain shrink-0" />
-            )}
-            <span className="font-semibold flex-1 min-w-0 truncate">{orgName || "Atrium"}</span>
-            <Link
-              href="/portal"
-              className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            >
-              Projects
-            </Link>
-            <Link
-              href="/portal/settings"
-              className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            >
-              Settings
-            </Link>
-            <NotificationBell />
-            <ThemeToggle />
-            <SignOutButton />
+          <header className="studio-nav-wrap">
+            <div className="studio-nav">
+              <Link className="studio-nav-logo" href="/portal" aria-label={`${orgName || STUDIO_NAME}, your projects`}>
+                {!branding?.hideLogo && logoSrc ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={logoSrc} alt="" />
+                ) : (
+                  <StudioMark size={30} />
+                )}
+              </Link>
+              <nav className="studio-nav-links" aria-label="Main">
+                <Link href="/portal">Projects</Link>
+                <Link href="/portal/settings">Settings</Link>
+              </nav>
+              <div className="studio-nav-tools">
+                <NotificationBell />
+                <ThemeToggle />
+                <SignOutButton />
+              </div>
+            </div>
           </header>
-          <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-16">
             <DemoBanner surface="portal" isDemo={isDemo} appUrl={appUrl} />
             {children}
           </main>

@@ -50,7 +50,7 @@ export function WeeklyUpdateReminderEmail({
               <br />
               <span style={{ color: "#6b7280", fontSize: "13px" }}>{project.lastUpdate}</span>
               <br />
-              <Link href={project.draftUrl} style={{ color: "#006b68", fontSize: "14px" }}>
+              <Link href={project.draftUrl} style={{ color: "#2d2c80", fontSize: "14px" }}>
                 Review draft update →
               </Link>
             </Text>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { STUDIO_NAME, StudioMark } from "@/lib/studio";
 import { setActiveOrgAndRedirect } from "@/lib/api";
 import { destinationAfterSignIn } from "@/lib/two-factor-redirect";
 import { track } from "@/lib/track";
@@ -221,6 +222,11 @@ export function LoginForm({ orgName, logoSrc, hideLogo, onCustomDomain }: LoginF
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
+          {!logoSrc && !hideLogo && (
+            <Link href="/" aria-label={STUDIO_NAME} className="flex justify-center mb-5">
+              <StudioMark size={56} />
+            </Link>
+          )}
           {logoSrc && !hideLogo && (
             <div className="flex justify-center mb-4">
               <Image
@@ -232,8 +238,8 @@ export function LoginForm({ orgName, logoSrc, hideLogo, onCustomDomain }: LoginF
               />
             </div>
           )}
-          <h1 className="text-2xl font-bold">
-            {orgName ? `Sign in to ${orgName}` : "Sign in to Atrium"}
+          <h1 className="text-3xl font-bold">
+            {orgName ? `Sign in to ${orgName}` : `Sign in to ${STUDIO_NAME}`}
           </h1>
           <p className="text-[var(--muted-foreground)] mt-2">
             Enter your credentials to continue

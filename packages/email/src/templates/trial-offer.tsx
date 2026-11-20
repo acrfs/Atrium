@@ -50,11 +50,11 @@ export function OfferButtons({ proUrl, proLabel, lifetimeUrl, lifetimeLabel }: {
 }): React.ReactElement {
   return (
     <>
-      <Link href={proUrl} style={{ ...BUTTON, backgroundColor: "#006b68", color: "#ffffff" }}>
+      <Link href={proUrl} style={{ ...BUTTON, backgroundColor: "#2d2c80", color: "#ffffff" }}>
         {proLabel}
       </Link>
       {lifetimeUrl && (
-        <Link href={lifetimeUrl} style={{ ...BUTTON, border: "1px solid #006b68", color: "#006b68" }}>
+        <Link href={lifetimeUrl} style={{ ...BUTTON, border: "1px solid #2d2c80", color: "#2d2c80" }}>
           Get Lifetime
         </Link>
       )}

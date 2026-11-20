@@ -69,7 +69,7 @@ export function MobileNav({
           />
         )}
         <span className="font-bold text-sm truncate">
-          {orgName || "Atrium"}
+          {orgName || "Shana Studios"}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <GlobalSearch iconOnly />

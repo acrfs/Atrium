@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Providers } from "./providers";
 import { Trackers } from "@/components/trackers";
-// @ts-expect-error — raw string import via webpack asset/source
-import changelogRaw from "../../CHANGELOG.md";
+import { STUDIO_NAME } from "@/lib/studio";
 import "./globals.css";
-
-function latestChangelogVersion(): string {
-  const match = (changelogRaw as string).match(/^## \[(.+?)\]/m);
-  return match?.[1] ?? "0.0.0";
-}
+import "./studio-theme.css";
 
 export const metadata: Metadata = {
-  title: "Atrium",
-  description: "Client portal for agencies and freelancers",
+  title: `${STUDIO_NAME} Client Portal`,
+  description: `Client portal for ${STUDIO_NAME}`,
   icons: { icon: "/icon-64.png" },
 };
 
@@ -29,12 +23,6 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <Providers>{children}</Providers>
-        <Link
-          href="/changelog"
-          className="fixed bottom-3 right-3 text-[10px] font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors opacity-50 hover:opacity-100"
-        >
-          v{latestChangelogVersion()}
-        </Link>
       </body>
     </html>
   );

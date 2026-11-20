@@ -47,7 +47,7 @@ export function DocumentSigningTurnEmail({
             style={{
               display: "inline-block",
               padding: "12px 24px",
-              backgroundColor: "#006b68",
+              backgroundColor: "#2d2c80",
               color: "#ffffff",
               borderRadius: "6px",
               textDecoration: "none",

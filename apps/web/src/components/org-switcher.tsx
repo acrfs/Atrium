@@ -1,5 +1,6 @@
 "use client";
 
+import { STUDIO_NAME } from "@/lib/studio";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -98,8 +99,8 @@ export function OrgSwitcher({
           className="h-7 w-7 object-contain shrink-0"
         />
       )}
-      <span className="font-bold text-lg leading-none truncate">
-        {orgName || "Atrium"}
+      <span className="font-serif text-2xl leading-none tracking-tight truncate">
+        {orgName || STUDIO_NAME}
       </span>
     </>
   );

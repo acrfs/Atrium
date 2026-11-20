@@ -1,31 +1,43 @@
 import Link from "next/link";
+import { STUDIO_NAME, STUDIO_PORTFOLIO_URL, StudioMark } from "@/lib/studio";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-8 p-8">
-      <div className="text-center space-y-4">
-        <h1 className="text-5xl font-bold tracking-tight flex items-center justify-center gap-3">
-          <img src="/icon-64.png" alt="Atrium logo" width={56} height={56} />
-          Atrium
-        </h1>
-        <p className="text-xl text-[var(--muted-foreground)] max-w-md">
-          The open-source client portal for agencies and freelancers.
-        </p>
-      </div>
-      <div className="flex gap-4">
-        <Link
-          href="/login"
-          className="px-6 py-3 bg-[var(--primary)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-        >
-          Sign In
-        </Link>
-        <Link
-          href="/signup"
-          className="px-6 py-3 border border-[var(--border)] rounded-lg font-medium hover:bg-[var(--muted)] transition-colors"
-        >
-          Get Started
-        </Link>
-      </div>
-    </div>
+    <>
+      <header className="studio-nav-wrap is-fixed">
+        <div className="studio-nav">
+          <Link className="studio-nav-logo" href="/" aria-label={`${STUDIO_NAME} client portal`}>
+            <StudioMark size={30} />
+          </Link>
+          <nav className="studio-nav-links" aria-label="Main">
+            <a href={STUDIO_PORTFOLIO_URL}>Portfolio</a>
+            <a href={`${STUDIO_PORTFOLIO_URL}/#contact`}>Contact</a>
+          </nav>
+          <Link className="studio-cta" href="/login">
+            Sign in
+          </Link>
+        </div>
+      </header>
+
+      <main>
+        <section className="studio-hero">
+          <div className="studio-hero-light" aria-hidden="true" />
+          <div className="studio-hero-logo">
+            <StudioMark color="#fff" />
+          </div>
+          <h1>Client Portal</h1>
+          <p className="studio-hero-sub">
+            Your projects with {STUDIO_NAME}. Files, approvals and invoices in one place.
+          </p>
+          <Link className="studio-cta" href="/login">
+            Sign in to your portal
+          </Link>
+          <a className="studio-hero-foot is-left" href={STUDIO_PORTFOLIO_URL}>
+            Back to the portfolio
+          </a>
+          <span className="studio-hero-foot is-right">{STUDIO_NAME}</span>
+        </section>
+      </main>
+    </>
   );
 }
