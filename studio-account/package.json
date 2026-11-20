@@ -1,0 +1,16 @@
+{
+  "name": "studio-account",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Shana Studios password sync: one password change reaches the portal login, the portal's email setting and the website's email setting.",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "imapflow": "^1.0.200",
+    "nodemailer": "^7.0.0"
+  }
+}
