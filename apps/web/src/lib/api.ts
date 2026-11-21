@@ -177,5 +177,6 @@ export async function setActiveOrgAndRedirect(
 
   const member = await memberRes.json();
   const role = member?.role || "member";
+  if (role === "developer") return "/dashboard/settings/workspace";
   return role === "owner" || role === "admin" ? "/dashboard" : defaultPath;
 }

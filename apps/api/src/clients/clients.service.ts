@@ -124,7 +124,7 @@ export class ClientsService {
         throw new BadRequestException("Cannot demote the last owner");
       }
     }
-    const validRoles = ["owner", "admin", "member"];
+    const validRoles = ["owner", "admin", "developer", "member"];
     if (!validRoles.includes(newRole)) {
       throw new BadRequestException("Invalid role");
     }
@@ -151,6 +151,19 @@ export class ClientsService {
       this.logger.error("Failed to sync contact after role change", err);
     }
     return updated;
+  }
+
+  /** Switches a pending staff invitation between admin and developer (see SetInvitationRoleDto). */
+  async setInvitationRole(invitationId: string, role: string, orgId: string) {
+    if (role !== "admin" && role !== "developer") throw new BadRequestException("Invalid role");
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { id: invitationId, organizationId: orgId, status: "pending" },
+    });
+    if (!invitation) throw new NotFoundException("Invitation not found");
+    if (invitation.role !== "admin" && invitation.role !== "developer") {
+      throw new BadRequestException("Only a staff admin invitation can become a developer invitation");
+    }
+    return this.prisma.invitation.update({ where: { id: invitationId }, data: { role } });
   }
 
   async setMemberRate(

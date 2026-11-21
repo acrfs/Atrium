@@ -24,6 +24,7 @@ import { twoFactorGatePage } from "@/lib/two-factor-gate";
 import { logoSrc as buildLogoSrc } from "@/lib/logo-src";
 import { SessionProvider } from "@/lib/session-context";
 import { initials } from "@/lib/initials";
+import { DeveloperRouteGuard } from "./developer-route-guard";
 
 async function getSession() {
   try {
@@ -249,7 +250,7 @@ export default async function DashboardLayout({
             name gets the full sidebar width. Desktop only — MobileNav
             carries its own copy of these. */}
         <header className="hidden md:flex items-center justify-end gap-1 px-6 lg:px-8 pt-4">
-          <GlobalSearch iconOnly />
+          {role !== "developer" && <GlobalSearch iconOnly />}
           <NotificationBell />
           <ThemeToggle />
         </header>
@@ -277,7 +278,7 @@ export default async function DashboardLayout({
           {role === "owner" && telemetryEnabled === null && (
             <TelemetryConsentBanner isDemo={isDemo} />
           )}
-          {children}
+          <DeveloperRouteGuard>{children}</DeveloperRouteGuard>
         </main>
       </div>
     </div>

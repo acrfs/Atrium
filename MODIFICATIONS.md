@@ -28,3 +28,9 @@ SIL Open Font License 1.1.
   `STUDIO_SYNC_TOKEN` is set, that sets one user's sign-in password and the matching SMTP password,
   used by the separate `studio-account/` service (account.shanastudios.co). `MailService` gained
   `clearSmtpTransporters()` so a changed SMTP password applies at once.
+
+- A Developer role (`developer`) for whoever runs the portal's technical side: workspace and email
+  settings, branding, integration destinations and sign-in security, with no access to projects,
+  clients, contacts, files, invoices or search. Only the settings, branding, integrations and team
+  controllers grant it (`apps/api/src/clients/developer-role.spec.ts` enforces that). Developers are
+  invited as admins and the pending invitation is switched (`PUT /clients/invitations/:id/role`).

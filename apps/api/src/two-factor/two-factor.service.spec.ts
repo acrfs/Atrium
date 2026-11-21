@@ -193,7 +193,7 @@ describe("TwoFactorService.isStaffInRequiringWorkspace", () => {
     expect(prisma.member.findFirst).toHaveBeenCalledWith({
       where: {
         userId: "u1",
-        role: { in: ["owner", "admin"] },
+        role: { in: ["owner", "admin", "developer"] },
         organization: { systemSettings: { requireTwoFactor: true } },
       },
       select: { id: true },

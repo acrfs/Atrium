@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "@/lib/session-context";
+import { developerMayOpen, isDeveloper } from "@/lib/developer-access";
 
 interface Section {
   href: string;
@@ -20,12 +22,14 @@ const SECTIONS: Section[] = [
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }): React.ReactElement {
   const pathname = usePathname();
+  const { role } = useSession();
+  const sections: Section[] = isDeveloper(role) ? SECTIONS.filter((s) => developerMayOpen(s.href)) : SECTIONS;
 
   return (
     <div className="space-y-6">
       {/* Scrolls sideways on a phone instead of pushing the page wider. */}
       <nav aria-label="Settings" className="flex gap-1 border-b border-[var(--border)] overflow-x-auto">
-        {SECTIONS.map((s) => {
+        {sections.map((s) => {
           const isActive = pathname === s.href;
           return (
             <Link

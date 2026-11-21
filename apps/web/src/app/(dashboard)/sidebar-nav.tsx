@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "@/lib/session-context";
+import { isDeveloper } from "@/lib/developer-access";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -22,10 +24,13 @@ const navItems = [
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
+  const { role } = useSession();
+  // A developer works in Settings only; the studio's work stays out of view.
+  const items = isDeveloper(role) ? navItems.filter((i) => i.href === "/dashboard/settings") : navItems;
 
   return (
     <nav className="space-y-1 flex-1">
-      {navItems.map(({ href, label, icon: Icon }) => {
+      {items.map(({ href, label, icon: Icon }) => {
         const isActive =
           pathname === href ||
           (href !== "/dashboard" && pathname.startsWith(href));

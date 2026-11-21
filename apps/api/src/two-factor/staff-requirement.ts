@@ -1,7 +1,8 @@
 import { ROLES } from "@atrium/shared";
 import type { PrismaService } from "../prisma/prisma.service";
 
-const STAFF_ROLES: string[] = [ROLES.OWNER, ROLES.ADMIN];
+// Developers sign in to the dashboard too, so they are held to the same sign-in rules.
+const STAFF_ROLES: string[] = [ROLES.OWNER, ROLES.ADMIN, ROLES.DEVELOPER];
 
 /**
  * Whether the user is an owner or admin of any workspace that requires 2FA.

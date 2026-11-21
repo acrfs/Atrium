@@ -80,6 +80,8 @@ export default async function PortalLayout({
   }
   // A session that has not passed its second factor, or staff who owe setup.
   if (gatePage) redirect(gatePage);
+  // A developer has no client portal; their place is the dashboard's Settings.
+  if (org?.role === "developer") redirect("/dashboard/settings/workspace");
 
   const orgName: string | null = org?.name || null;
   const logoSrc: string | null = buildLogoSrc(branding, process.env.NEXT_PUBLIC_API_URL || "");
