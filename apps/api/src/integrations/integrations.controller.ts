@@ -23,7 +23,7 @@ function assertNotApiKey(req: AuthenticatedRequest): void {
 
 @Controller("integrations")
 @UseGuards(AuthGuard, RolesGuard)
-@Roles("owner", "admin")
+@Roles("owner", "admin", "developer")
 @RequiresFeature("integrations")
 export class IntegrationsController {
   constructor(private integrations: IntegrationsService) {}
@@ -86,7 +86,9 @@ export class IntegrationsController {
     return this.integrations.rotateSecret(id, orgId);
   }
 
+  // Delivery payloads carry project and client details, so developers can't read them.
   @Get(":id/deliveries")
+  @Roles("owner", "admin")
   deliveries(
     @Param("id") id: string,
     @Query() query: PaginationQueryDto,
@@ -96,6 +98,7 @@ export class IntegrationsController {
   }
 
   @Post("deliveries/:deliveryId/resend")
+  @Roles("owner", "admin")
   @HttpCode(200)
   resend(
     @Param("deliveryId") deliveryId: string,

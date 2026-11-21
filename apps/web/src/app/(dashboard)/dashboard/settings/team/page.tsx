@@ -38,18 +38,25 @@ interface PaginatedResponse<T> {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
+type StaffInviteRole = "admin" | "owner" | "developer";
+
+const toStaffInviteRole = (role: string | null | undefined): StaffInviteRole =>
+  role === "owner" || role === "developer" ? role : "admin";
+
 const roleColor = (role: string): string => {
   switch (role) {
     case "owner":
       return "bg-purple-100 text-purple-700";
     case "admin":
       return "bg-blue-100 text-blue-700";
+    case "developer":
+      return "bg-emerald-100 text-emerald-700";
     default:
       return "bg-[var(--muted)] text-[var(--foreground)]";
   }
 };
 
-/** Settings → Team: your staff (owners and admins). Clients are contacts with portal access. */
+/** Settings → Team: your staff (owners, admins and developers). Clients are contacts with portal access. */
 export default function TeamPage(): React.ReactElement {
   const config = useAppConfig();
   const confirm = useConfirm();
@@ -64,7 +71,7 @@ export default function TeamPage(): React.ReactElement {
   const [copied, setCopied] = useState<string>("");
 
   const [email, setEmail] = useState<string>("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "owner">("admin");
+  const [inviteRole, setInviteRole] = useState<StaffInviteRole>("admin");
   const [inviteError, setInviteError] = useState<string>("");
   const [inviteLink, setInviteLink] = useState<string>("");
   const [inviting, setInviting] = useState<boolean>(false);
@@ -90,6 +97,7 @@ export default function TeamPage(): React.ReactElement {
   }, []);
 
   const loadInvitations = useCallback(async (): Promise<Invitation[]> => {
+    if (currentRole === "developer") return [];
     try {
       const all = await apiFetch<Invitation[]>("/clients/invitations");
       // Portal (client) invitations live on their contacts.
@@ -100,7 +108,7 @@ export default function TeamPage(): React.ReactElement {
       console.error(err);
       return [];
     }
-  }, []);
+  }, [currentRole]);
 
   const loadLimit = useCallback((): void => {
     if (!config?.billingEnabled) return;
@@ -145,15 +153,35 @@ export default function TeamPage(): React.ReactElement {
     }
   };
 
+  /**
+   * Sends (or re-sends) a staff invitation. Better Auth only knows owner, admin
+   * and member, so a Developer is invited as an admin and the pending row is
+   * then switched to "developer" before anyone can accept it as an admin.
+   */
+  const sendStaffInvite = async (inviteEmail: string, role: StaffInviteRole, resend: boolean): Promise<void> => {
+    await apiFetch("/auth/organization/invite-member", {
+      method: "POST",
+      body: JSON.stringify({ email: inviteEmail, role: role === "developer" ? "admin" : role, ...(resend ? { resend: true } : {}) }),
+    });
+    if (role !== "developer") return;
+    const all = await apiFetch<Invitation[]>("/clients/invitations");
+    const key: string = inviteEmail.toLowerCase();
+    const newest = all
+      .filter((inv) => inv.email.toLowerCase() === key && !inv.expired)
+      .sort((a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime())[0];
+    if (!newest) throw new Error("Invitation sent, but it could not be switched to Developer");
+    await apiFetch(`/clients/invitations/${newest.id}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ role: "developer" }),
+    });
+  };
+
   const handleResendInvitation = async (inv: Invitation): Promise<void> => {
     setResendingId(inv.id);
     try {
       // Better Auth extends and re-sends a live invite. An expired one is invisible
       // to it, so the same call creates a fresh invite and the API hides the old row.
-      await apiFetch("/auth/organization/invite-member", {
-        method: "POST",
-        body: JSON.stringify({ email: inv.email, role: inv.role, resend: true }),
-      });
+      await sendStaffInvite(inv.email, toStaffInviteRole(inv.role), true);
       track("invitation_resent", { role: inv.role, expired: inv.expired });
       await loadInvitations();
       loadLimit();
@@ -229,10 +257,7 @@ export default function TeamPage(): React.ReactElement {
     setInviteLink("");
     setInviting(true);
     try {
-      await apiFetch("/auth/organization/invite-member", {
-        method: "POST",
-        body: JSON.stringify({ email, role: inviteRole }),
-      });
+      await sendStaffInvite(email, inviteRole, false);
       track("team_member_invited", { role: inviteRole });
       const submittedEmail = email.toLowerCase();
       setEmail("");
@@ -267,7 +292,7 @@ export default function TeamPage(): React.ReactElement {
 
       {resetLink && <ResetLinkModal resetLink={resetLink} onClose={closeReset} />}
 
-      {!isOwner && currentRole === "admin" && (
+      {!isOwner && (currentRole === "admin" || currentRole === "developer") && (
         <p className="text-sm text-[var(--muted-foreground)]">
           Only the organization owner can invite or manage team members.
         </p>
@@ -322,12 +347,13 @@ export default function TeamPage(): React.ReactElement {
                 />
                 <select
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as "admin" | "owner")}
+                  onChange={(e) => setInviteRole(e.target.value as StaffInviteRole)}
                   aria-label="Role"
                   className="px-3 py-2 border border-[var(--border)] rounded-lg bg-[var(--background)] text-sm"
                 >
                   <option value="admin">Admin</option>
                   <option value="owner">Owner</option>
+                  <option value="developer">Developer</option>
                 </select>
                 <button
                   type="submit"
@@ -338,6 +364,10 @@ export default function TeamPage(): React.ReactElement {
                   {inviting ? "Inviting..." : "Invite"}
                 </button>
               </div>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                A Developer manages settings, email, branding and integrations, and never sees your
+                projects, contacts, files or invoices.
+              </p>
             </form>
           )}
 
@@ -456,6 +486,7 @@ export default function TeamPage(): React.ReactElement {
                       >
                         <option value="owner">owner</option>
                         <option value="admin">admin</option>
+                        <option value="developer">developer</option>
                       </select>
                     ) : (
                       <span className={`text-xs px-2 py-1 rounded-full ${roleColor(member.role)}`}>{member.role}</span>

@@ -54,7 +54,7 @@ export class BrandingController {
   }
 
   @Put()
-  @Roles("owner", "admin")
+  @Roles("owner", "admin", "developer")
   update(@CurrentOrg("id") orgId: string, @Body() dto: UpdateBrandingDto) {
     // Tolerated on input for one release (see the DTO); never persisted.
     const data = { ...dto };
@@ -63,7 +63,7 @@ export class BrandingController {
   }
 
   @Post("logo")
-  @Roles("owner", "admin")
+  @Roles("owner", "admin", "developer")
   @UseInterceptors(FileInterceptor("logo", { limits: { fileSize: MAX_LOGO_SIZE } }))
   async uploadLogo(
     @UploadedFile() file: { originalname: string; buffer: Buffer; mimetype: string; size: number },
@@ -107,7 +107,7 @@ export class BrandingController {
   }
 
   @Delete("logo")
-  @Roles("owner", "admin")
+  @Roles("owner", "admin", "developer")
   async deleteLogo(@CurrentOrg("id") orgId: string) {
     const existing = await this.brandingService.findByOrgOrNull(orgId);
     if (existing?.logoKey) {

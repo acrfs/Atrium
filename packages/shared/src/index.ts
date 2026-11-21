@@ -49,6 +49,13 @@ export const ROLES = {
   OWNER: "owner",
   ADMIN: "admin",
   MEMBER: "member",
+  /**
+   * Technical access for the person who runs the portal: workspace settings,
+   * email, branding, integrations and API keys, but never projects, clients,
+   * files, invoices or contacts. Every endpoint that names roles leaves it out
+   * unless it is listed, so it is denied by default.
+   */
+  DEVELOPER: "developer",
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];

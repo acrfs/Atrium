@@ -22,12 +22,12 @@ describe("secondFactorsOf", () => {
 });
 
 describe("isStaffAnywhere", () => {
-  it("looks for an owner or admin membership in any workspace", async () => {
+  it("looks for an owner, admin or developer membership in any workspace", async () => {
     const findFirst = mock(() => Promise.resolve({ id: "m1" }));
     const prisma = { member: { findFirst } } as unknown as PrismaService;
     expect(await isStaffAnywhere(prisma, "u1")).toBe(true);
     expect(findFirst).toHaveBeenCalledWith({
-      where: { userId: "u1", role: { in: ["owner", "admin"] } },
+      where: { userId: "u1", role: { in: ["owner", "admin", "developer"] } },
       select: { id: true },
     });
   });

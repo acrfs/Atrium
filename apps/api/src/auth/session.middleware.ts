@@ -9,7 +9,7 @@ import { SessionCache } from "./session-cache";
 import type { CachedSession } from "./session-cache";
 import { hasSecondFactor } from "../two-factor/second-factor";
 import { isStaffInRequiringWorkspace } from "../two-factor/staff-requirement";
-import { isPrivilegedRole } from "../common/helpers/privileged-role";
+import { isStaffRole } from "../common/helpers/privileged-role";
 import { PrismaService } from "../prisma/prisma.service";
 import { bearerToken, isMcpPath, mcpOAuthEnabled, ORG_MEMBER_FIELDS, RateLimiter } from "../common";
 import type {
@@ -178,7 +178,7 @@ export class SessionMiddleware implements NestMiddleware {
     const user: AuthUser | undefined = authReq.user;
     if (!user) return false;
     if (hasSecondFactor(user)) return !authReq.session?.secondFactor;
-    return authReq.workspaceRequiresTwoFactor === true && isPrivilegedRole(authReq.member?.role);
+    return authReq.workspaceRequiresTwoFactor === true && isStaffRole(authReq.member?.role);
   }
 
   /** Drops expired entries from a cache that has grown past its soft cap. */

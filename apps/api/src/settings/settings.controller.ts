@@ -18,13 +18,13 @@ export class SettingsController {
   constructor(private settingsService: SettingsService) {}
 
   @Get()
-  @Roles("owner", "admin")
+  @Roles("owner", "admin", "developer")
   getSettings(@CurrentOrg("id") orgId: string) {
     return this.settingsService.getSettings(orgId);
   }
 
   @Put()
-  @Roles("owner")
+  @Roles("owner", "developer")
   updateSettings(
     @CurrentOrg("id") orgId: string,
     @Body() dto: UpdateSettingsDto,
@@ -33,7 +33,7 @@ export class SettingsController {
   }
 
   @Patch()
-  @Roles("owner")
+  @Roles("owner", "developer")
   patchSettings(
     @CurrentOrg("id") orgId: string,
     @Body() dto: UpdateSettingsDto,
@@ -48,7 +48,7 @@ export class SettingsController {
   }
 
   @Post("test-email")
-  @Roles("owner")
+  @Roles("owner", "developer")
   testEmail(
     @CurrentOrg("id") orgId: string,
     @CurrentUser("email") userEmail: string,
@@ -57,13 +57,13 @@ export class SettingsController {
   }
 
   @Get("custom-domain")
-  @Roles("owner")
+  @Roles("owner", "developer")
   getCustomDomain(@CurrentOrg("id") orgId: string) {
     return this.settingsService.getCustomDomain(orgId);
   }
 
   @Put("custom-domain")
-  @Roles("owner")
+  @Roles("owner", "developer")
   @RequiresFeature("custom_domain")
   saveCustomDomain(
     @CurrentOrg("id") orgId: string,
@@ -73,13 +73,13 @@ export class SettingsController {
   }
 
   @Delete("custom-domain")
-  @Roles("owner")
+  @Roles("owner", "developer")
   removeCustomDomain(@CurrentOrg("id") orgId: string) {
     return this.settingsService.removeCustomDomain(orgId);
   }
 
   @Get("custom-domain/verify")
-  @Roles("owner")
+  @Roles("owner", "developer")
   verifyCustomDomain(@CurrentOrg("id") orgId: string) {
     return this.settingsService.verifyCustomDomain(orgId);
   }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { isDeveloper } from "@/lib/developer-access";
 import { SidebarNav } from "./sidebar-nav";
 import { SignOutButton } from "./sign-out-button";
 import { NotificationBell } from "@/components/notification-bell";
@@ -72,7 +73,7 @@ export function MobileNav({
           {orgName || "Shana Studios"}
         </span>
         <div className="ml-auto flex items-center gap-1">
-          <GlobalSearch iconOnly />
+          {!isDeveloper(role) && <GlobalSearch iconOnly />}
           <NotificationBell align="left" />
           <ThemeToggle />
         </div>

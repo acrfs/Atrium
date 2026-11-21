@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  ForbiddenException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
@@ -21,7 +22,7 @@ import {
 } from "../common";
 import { ClientsService } from "./clients.service";
 import { presentInvitations } from "./invitations";
-import { ChangeRoleDto, ListMembersQueryDto, SetRateDto } from "./clients.dto";
+import { ChangeRoleDto, ListMembersQueryDto, SetInvitationRoleDto, SetRateDto } from "./clients.dto";
 import { UpdateClientProfileDto } from "./client-profile.dto";
 
 @Controller("clients")
@@ -34,11 +35,18 @@ export class ClientsController {
   ) {}
 
   @Get()
-  @Roles("owner", "admin")
+  @Roles("owner", "admin", "developer")
   async list(
     @CurrentOrg("id") orgId: string,
     @Query() query: ListMembersQueryDto,
+    @CurrentMember("role") role: string,
   ) {
+    // A developer sees who is on the team, never the studio's clients or rates.
+    if (role === "developer") {
+      if (query.role !== "staff") throw new ForbiddenException("Developers can list staff only");
+      const res = await this.clientsService.list(orgId, query.page, query.limit, undefined, "staff");
+      return { ...res, data: res.data.map((m) => ({ ...m, hourlyRateCents: null })) };
+    }
     return this.clientsService.list(orgId, query.page, query.limit, undefined, query.role);
   }
 
@@ -96,6 +104,16 @@ export class ClientsController {
       userId,
       role,
     );
+  }
+
+  @Put("invitations/:id/role")
+  @Roles("owner")
+  async setInvitationRole(
+    @Param("id") invitationId: string,
+    @Body() dto: SetInvitationRoleDto,
+    @CurrentOrg("id") orgId: string,
+  ) {
+    return this.clientsService.setInvitationRole(invitationId, dto.role, orgId);
   }
 
   @Put(":id/role")
