@@ -463,7 +463,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <Link
-                          href={inv.projectId ? `/dashboard/projects/${inv.projectId}?tab=invoices` : "/dashboard/projects"}
+                          href={inv.projectId ? `/dashboard/projects/${inv.projectId}?tab=invoices` : "/dashboard/invoices"}
                           className="text-xs font-semibold text-[var(--primary)] hover:underline shrink-0 flex items-center gap-1"
                         >
                           <span>View invoice</span>
