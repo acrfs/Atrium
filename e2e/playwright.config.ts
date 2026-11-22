@@ -62,6 +62,10 @@ const GOOGLE_SSO_PRIVATE_KEY: string = Buffer.from(
   generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
 ).toString("base64");
 
+/** google-calendar.e2e.ts: a fake OAuth client, so the connect flow is on. Google itself is never reached. */
+export const GOOGLE_CALENDAR_CLIENT_ID: string = "google-calendar-e2e.apps.googleusercontent.com";
+const GOOGLE_CALENDAR_CLIENT_SECRET: string = "e2e-google-calendar-secret";
+
 export const DEMO_SLUG: string = process.env.DEMO_ORG_SLUG ?? "demo-e2e";
 
 // Set on the runner process too, not only in the webServer child envs: global
@@ -118,6 +122,8 @@ export default defineConfig({
         GOOGLE_SSO_REDIRECT_URIS: GOOGLE_SSO_REDIRECT_URI,
         // Every e2e owner signs up at test.local.
         GOOGLE_SSO_ALLOWED_DOMAINS: "test.local",
+        GOOGLE_CALENDAR_CLIENT_ID,
+        GOOGLE_CALENDAR_CLIENT_SECRET,
         STUDIO_SYNC_TOKEN,
       },
     },

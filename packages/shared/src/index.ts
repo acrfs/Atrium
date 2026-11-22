@@ -138,6 +138,7 @@ export const CALENDAR_EVENT_TYPES = [
   "project_start",
   "project_end",
   "invoice_due",
+  "google_event",
 ] as const;
 
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
@@ -171,7 +172,35 @@ export type CalendarEvent =
       projectId: string | null;
       projectName: string | null;
       amountCents: number;
+    }
+  | {
+      /** An event from the connected Google Calendar account. */
+      type: "google_event";
+      id: string;
+      date: string;
+      title: string;
+      projectId: null;
+      allDay: boolean;
+      /** ISO timestamps; for all-day events these are the day's bounds in UTC. */
+      start: string;
+      end: string;
+      location: string | null;
+      htmlLink: string | null;
+      description: string | null;
     };
+
+/** What the portal knows about its Google Calendar connection. */
+export interface GoogleCalendarStatus {
+  /** GOOGLE_CALENDAR_CLIENT_ID / _SECRET are set on the server. */
+  configured: boolean;
+  connected: boolean;
+  googleEmail: string | null;
+  portalCalendarId: string | null;
+  pushEnabled: boolean;
+  pullEnabled: boolean;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
 
 export interface OwnedOrg {
   id: string;

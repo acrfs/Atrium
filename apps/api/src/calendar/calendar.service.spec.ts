@@ -6,6 +6,7 @@ function build() {
     task: { findMany: mock(() => Promise.resolve([])) },
     project: { findMany: mock(() => Promise.resolve([])) },
     invoice: { findMany: mock(() => Promise.resolve([])) },
+    googleCalendarEvent: { findMany: mock(() => Promise.resolve([] as unknown[])) },
   };
   return { prisma, service: new CalendarService(prisma as never) };
 }

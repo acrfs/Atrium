@@ -12,6 +12,7 @@ const KIND_LABEL: Record<CalendarEvent["type"], string> = {
   project_start: "Project starts",
   project_end: "Project deadline",
   invoice_due: "Invoice due",
+  google_event: "Google Calendar",
 };
 
 function eventHref(e: CalendarEvent): string {
@@ -77,7 +78,7 @@ export function ThisWeekCard(): React.ReactElement {
                   </Link>
                   <span className="block text-[11px] text-[var(--muted-foreground)] truncate mt-0.5">
                     {KIND_LABEL[e.type]}
-                    {e.type !== "project_end" && e.projectName ? ` · ${e.projectName}` : ""}
+                    {e.type !== "project_end" && e.type !== "google_event" && e.projectName ? ` · ${e.projectName}` : ""}
                   </span>
                 </div>
               </li>

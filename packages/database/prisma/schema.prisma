@@ -165,6 +165,7 @@ model Organization {
   leadSources      LeadSource[]
   pursuitPipelines PursuitPipeline[]
   pursuitStages    PursuitStage[]
+  googleCalendar   GoogleCalendarConnection?
 
   @@map("organization")
 }
@@ -1568,4 +1569,71 @@ model BillcomCustomer {
   createdAt         DateTime @default(now())
 
   @@unique([organizationId, email])
+}
+
+// Two-way sync with one Google Calendar account per workspace (owner/admin connects it).
+// Portal deadlines go to a calendar the portal creates in that account; events from
+// the account's primary calendar are cached here so the portal calendar can show them.
+model GoogleCalendarConnection {
+  id                   String    @id @default(cuid())
+  organizationId       String    @unique
+  connectedById        String
+  googleEmail          String
+  refreshToken         String // encrypted
+  accessToken          String? // encrypted
+  accessTokenExpiresAt DateTime?
+  portalCalendarId     String? // the calendar portal items are written to
+  readCalendarId       String    @default("primary")
+  syncToken            String?
+  pushEnabled          Boolean   @default(true)
+  pullEnabled          Boolean   @default(true)
+  lastSyncedAt         DateTime?
+  lastFullSyncAt       DateTime?
+  lastError            String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       GoogleCalendarEvent[]
+  pushes       GoogleCalendarPush[]
+
+  @@map("google_calendar_connection")
+}
+
+model GoogleCalendarEvent {
+  id             String   @id @default(cuid())
+  connectionId   String
+  organizationId String
+  googleEventId  String
+  title          String
+  description    String?
+  location       String?
+  htmlLink       String?
+  start          DateTime
+  end            DateTime
+  allDay         Boolean  @default(false)
+  // All-day events keep their calendar dates so they never shift with timezones.
+  startDate      String?
+  endDate        String? // exclusive, as Google sends it
+  updatedAt      DateTime @updatedAt
+
+  connection GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, googleEventId])
+  @@index([organizationId, start])
+  @@map("google_calendar_event")
+}
+
+model GoogleCalendarPush {
+  id            String @id @default(cuid())
+  connectionId  String
+  sourceKey     String // "<type>:<id>", e.g. "task:abc"
+  googleEventId String
+  date          String // YYYY-MM-DD the item was last written for
+  hash          String // of the event body, to skip unchanged items
+
+  connection GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, sourceKey])
+  @@map("google_calendar_push")
 }

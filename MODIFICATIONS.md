@@ -68,3 +68,13 @@ Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
   now also holds developers to the existing "Require two-factor for staff" setting. Recovery: an owner
   resets another member from Team; a locked-out owner needs `script:disable-2fa <email> --passkeys`
   on the server, then adds a new passkey at the next sign-in.
+
+- Two-way Google Calendar sync (`apps/api/src/google-calendar/`), controlled from the Calendar page
+  (Google Calendar button, New event). An owner or admin connects one Google account per workspace
+  with OAuth (`GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`, redirect URI
+  `<API_URL>/api/google-calendar/callback`; tokens stored encrypted). Every five minutes, and on
+  "Sync now": open tasks, project start and end dates and sent or overdue invoices are written as
+  all-day events to a separate "<workspace> portal" calendar the portal creates in that account, and
+  events from the account's primary calendar are cached (`GoogleCalendarEvent`) and shown in the
+  portal calendar as `google_event`. Google events can be created, edited and deleted from the
+  portal. New models `GoogleCalendarConnection`, `GoogleCalendarEvent`, `GoogleCalendarPush`.
