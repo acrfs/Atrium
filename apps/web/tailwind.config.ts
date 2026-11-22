@@ -29,7 +29,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['"Outfit"', "ui-sans-serif", "system-ui", "-apple-system", '"Segoe UI"', "sans-serif"],
+        sans: ['"Inter"', "ui-sans-serif", "system-ui", "-apple-system", '"Segoe UI"', "sans-serif"],
         serif: ['"Instrument Serif"', '"Iowan Old Style"', '"Palatino Linotype"', "Georgia", "serif"],
       },
     },
