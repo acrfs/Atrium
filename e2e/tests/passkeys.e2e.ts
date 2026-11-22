@@ -214,7 +214,7 @@ test.describe("Passkeys", () => {
     const list = (await (await page.request.get(`${API}/api/auth/passkey/list-user-passkeys`)).json()) as { id: string }[];
     const remove = await authPost(page, "/passkey/delete-passkey", { id: list[0].id });
     expect(remove.status()).toBe(403);
-    expect(await remove.text()).toContain("last way to provide it");
+    expect(await remove.text()).toContain("last way to sign in");
   });
 
   test("clients can't add passkeys, and adding one never signs anyone in", async ({ browser }) => {
@@ -321,5 +321,111 @@ test.describe("Passkeys", () => {
     await other.reload();
     await other.waitForLoadState("networkidle");
     await expect(other.getByTestId("passkey-prompt")).toHaveCount(0);
+  });
+});
+
+async function setPasskeyRequirement(page: Page, required: boolean): Promise<number> {
+  const res = await page.request.put(`${API}/api/two-factor/passkey-requirement`, {
+    data: { required },
+    headers: { "x-csrf-token": await csrf(page.context()) },
+  });
+  return res.status();
+}
+
+async function gateCode(page: Page, path: string): Promise<string | undefined> {
+  const res = await page.request.get(`${API}${path}`);
+  if (res.status() !== 403) return undefined;
+  return ((await res.json()) as { code?: string }).code;
+}
+
+test.describe("Required passkeys for staff", () => {
+  test("an owner turns it on in Settings, only once they have a passkey", async ({ browser }) => {
+    const { page } = await createOwner(browser, "pkreq-toggle");
+    expect(await setPasskeyRequirement(page, true)).toBe(400);
+    await page.goto(`${WEB}/dashboard/settings/security`);
+    await expect(page.getByRole("checkbox", { name: /require passkeys for staff/i })).toBeDisabled();
+
+    await virtualAuthenticator(page);
+    await addPasskeyInSettings(page, "Owner laptop");
+    const toggle = page.getByRole("checkbox", { name: /require passkeys for staff/i });
+    await expect(toggle).toBeEnabled();
+    // Controlled by the server's answer, so click and wait rather than check().
+    await toggle.click();
+    await expect(toggle).toBeChecked();
+    await expect(page.getByText(/lost every passkey/i)).toBeVisible();
+    expect((await status(page)).workspaceRequiresPasskey).toBe(true);
+    // The owner signed in with a password and then added the passkey, which counts as a passkey session.
+    expect((await page.request.get(`${API}/api/projects`)).status()).toBe(200);
+  });
+
+  test("staff without a passkey must add one, and the authenticator app doesn't count", async ({ browser }) => {
+    const { page } = await createOwner(browser, "pkreq-enroll");
+    await virtualAuthenticator(page);
+    await addPasskeyInSettings(page, "Owner laptop");
+    expect(await setPasskeyRequirement(page, true)).toBe(200);
+    const admin = await addAdmin(browser, page);
+
+    expect(await gateCode(admin.page, "/api/projects")).toBe("PASSKEY_REQUIRED");
+    const app = await authPost(admin.page, "/two-factor/enable", { password: admin.password });
+    expect(app.status()).toBe(403);
+
+    await virtualAuthenticator(admin.page);
+    await admin.page.goto(`${WEB}/dashboard`);
+    await admin.page.waitForURL(/\/2fa\/setup/, { timeout: 20000 });
+    await expect(admin.page.getByRole("heading", { name: /add a passkey/i })).toBeVisible();
+    await expect(admin.page.getByRole("button", { name: /set up authenticator app/i })).toHaveCount(0);
+    await admin.page.getByLabel(/name this passkey/i).fill("Admin laptop");
+    await admin.page.getByRole("button", { name: /^add a passkey$/i }).click();
+    await expect(admin.page.getByText(/passkey added/i)).toBeVisible({ timeout: 15000 });
+    await admin.page.getByRole("button", { name: /^continue$/i }).click();
+    await admin.page.waitForURL(/\/dashboard/, { timeout: 20000 });
+    expect((await admin.page.request.get(`${API}/api/projects`)).status()).toBe(200);
+  });
+
+  test("staff who pass the authenticator app are sent back to sign in with their passkey", async ({ browser }) => {
+    const { page, email, password } = await createOwner(browser, "pkreq-stepup");
+    const device: Authenticator = await virtualAuthenticator(page);
+    const secret: string = await enableTotp(page, password);
+    await addPasskeyInSettings(page, "Owner laptop");
+    expect(await setPasskeyRequirement(page, true)).toBe(200);
+    await signOut(page);
+
+    // Password, then the app's code: a full sign-in before, not enough now.
+    const context: BrowserContext = await browser.newContext({ storageState: undefined });
+    const fresh: Page = await context.newPage();
+    expect((await authPost(fresh, "/sign-in/email", { email, password })).ok()).toBe(true);
+    const verify = await authPost(fresh, "/two-factor/verify-totp", { code: await generate({ secret }) });
+    expect(verify.ok(), await verify.text()).toBe(true);
+    expect(await gateCode(fresh, "/api/projects")).toBe("PASSKEY_SIGN_IN_REQUIRED");
+    // Nor can that session add a passkey of its own.
+    expect((await fresh.request.get(`${API}/api/auth/passkey/generate-register-options`)).status()).toBe(403);
+
+    await copyPasskeys(device, fresh);
+    await fresh.goto(`${WEB}/dashboard`);
+    await fresh.waitForURL(/\/login\/2fa/, { timeout: 20000 });
+    await expect(fresh.getByText(/requires signing in with your passkey/i)).toBeVisible();
+    await expect(fresh.getByLabel(/^code$/i)).toHaveCount(0);
+    await fresh.getByRole("button", { name: /^use a passkey$/i }).click();
+    await fresh.waitForURL(/\/dashboard/, { timeout: 20000 });
+    expect((await fresh.request.get(`${API}/api/projects`)).status()).toBe(200);
+    await context.close();
+  });
+
+  test("the last passkey stays even with the app on, and clients are never asked", async ({ browser }) => {
+    const { page, password } = await createOwner(browser, "pkreq-last");
+    await virtualAuthenticator(page);
+    await enableTotp(page, password);
+    await addPasskeyInSettings(page, "Only key");
+    expect(await setPasskeyRequirement(page, true)).toBe(200);
+
+    const list = (await (await page.request.get(`${API}/api/auth/passkey/list-user-passkeys`)).json()) as { id: string }[];
+    const remove = await authPost(page, "/passkey/delete-passkey", { id: list[0].id });
+    expect(remove.status()).toBe(403);
+
+    const client = await inviteAndAcceptClient(browser, page, "pkreq-client");
+    const session = await signIn(browser, client.clientEmail, client.password);
+    expect((await session.page.request.get(`${API}/api/projects/mine`)).status()).toBe(200);
+    expect((await status(session.page)).passkeyRequired).toBe(false);
+    await session.context.close();
   });
 });

@@ -173,3 +173,41 @@ describe("passkeys in the rules", () => {
     expect(passkeyProofIsRecent({ passkeyVerifiedAt: new Date(now - 3 * 60 * 60_000) }, now)).toBe(false);
   });
 });
+
+describe("gateDecision where passkeys are required", () => {
+  const base = { hasFactor: false, secondFactor: null, enrollmentOwed: false, passkeyRequired: true, hasPasskey: false };
+
+  it("refuses staff without a passkey everything but adding one", () => {
+    expect(gateDecision({ ...base, route: "/api/projects" })).toBe("PASSKEY_REQUIRED");
+    expect(gateDecision({ ...base, route: "auth:/passkey/generate-register-options" })).toBeNull();
+    expect(gateDecision({ ...base, route: "auth:/passkey/verify-registration" })).toBeNull();
+    expect(gateDecision({ ...base, route: "/api/two-factor/status" })).toBeNull();
+  });
+
+  it("does not accept the authenticator app instead of a passkey", () => {
+    expect(gateDecision({ ...base, route: "auth:/two-factor/enable" })).toBe("PASSKEY_REQUIRED");
+    // Someone with only the app passes it first, then still owes a passkey.
+    const app = { ...base, hasFactor: true, secondFactor: "totp" };
+    expect(gateDecision({ ...app, route: "/api/projects" })).toBe("PASSKEY_REQUIRED");
+    expect(gateDecision({ ...app, route: "auth:/passkey/verify-registration" })).toBeNull();
+  });
+
+  it("makes staff with a passkey sign in with it, not the app, a recovery code or a trusted device", () => {
+    for (const secondFactor of ["totp", "backup_code", "trusted_device"]) {
+      const input = { ...base, hasFactor: true, hasPasskey: true, secondFactor };
+      expect(gateDecision({ ...input, route: "/api/projects" })).toBe("PASSKEY_SIGN_IN_REQUIRED");
+      expect(gateDecision({ ...input, route: "auth:/passkey/generate-register-options" })).toBe("PASSKEY_SIGN_IN_REQUIRED");
+      expect(gateDecision({ ...input, route: "auth:/passkey/verify-authentication" })).toBeNull();
+    }
+  });
+
+  it("lets a passkey session through", () => {
+    expect(
+      gateDecision({ ...base, hasFactor: true, hasPasskey: true, secondFactor: "passkey", route: "/api/projects" }),
+    ).toBeNull();
+  });
+
+  it("still sends a pending session to the second-factor step first", () => {
+    expect(gateDecision({ ...base, hasFactor: true, hasPasskey: true, route: "/api/projects" })).toBe("SECOND_FACTOR_REQUIRED");
+  });
+});

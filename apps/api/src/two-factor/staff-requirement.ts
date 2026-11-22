@@ -5,7 +5,8 @@ import type { PrismaService } from "../prisma/prisma.service";
 const STAFF_ROLES: string[] = [ROLES.OWNER, ROLES.ADMIN, ROLES.DEVELOPER];
 
 /**
- * Whether the user is an owner or admin of any workspace that requires 2FA.
+ * Whether the user is staff (owner, admin or developer) of any workspace that
+ * requires 2FA. Requiring passkeys counts too: a passkey is a second factor.
  * A plain function so AuthService's hooks and TwoFactorService share it
  * without a module cycle.
  */
@@ -17,7 +18,23 @@ export async function isStaffInRequiringWorkspace(
     where: {
       userId,
       role: { in: STAFF_ROLES },
-      organization: { systemSettings: { requireTwoFactor: true } },
+      organization: { systemSettings: { OR: [{ requireTwoFactor: true }, { requirePasskey: true }] } },
+    },
+    select: { id: true },
+  });
+  return member !== null;
+}
+
+/** Whether the user is staff of any workspace that requires passkeys. */
+export async function isStaffInPasskeyWorkspace(
+  prisma: Pick<PrismaService, "member">,
+  userId: string,
+): Promise<boolean> {
+  const member = await prisma.member.findFirst({
+    where: {
+      userId,
+      role: { in: STAFF_ROLES },
+      organization: { systemSettings: { requirePasskey: true } },
     },
     select: { id: true },
   });

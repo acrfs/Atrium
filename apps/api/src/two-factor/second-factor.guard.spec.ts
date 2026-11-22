@@ -13,6 +13,8 @@ interface FakeRequest {
   previewMode?: boolean;
   workspaceRequiresTwoFactor?: boolean;
   staffInRequiringWorkspace?: boolean;
+  workspaceRequiresPasskey?: boolean;
+  staffInPasskeyWorkspace?: boolean;
   sessionLookupFailed?: boolean;
 }
 
@@ -178,5 +180,51 @@ describe("SecondFactorGuard", () => {
       session: { secondFactor: null },
     };
     expect(guard.canActivate(context(req, true))).toBe(true);
+  });
+});
+
+describe("SecondFactorGuard where passkeys are required", () => {
+  it("holds a developer to it like an owner", () => {
+    const req: FakeRequest = {
+      originalUrl: "/api/settings",
+      user: { id: "u1" },
+      session: { secondFactor: null },
+      member: { role: "developer" },
+      workspaceRequiresPasskey: true,
+    };
+    expect(refusalCode(() => guard.canActivate(context(req)))).toBe("PASSKEY_REQUIRED");
+  });
+
+  it("asks staff who passed the authenticator app to sign in with their passkey", () => {
+    const req: FakeRequest = {
+      originalUrl: "/api/projects",
+      user: { id: "u1", twoFactorEnabled: true, hasPasskey: true },
+      session: { secondFactor: "totp" },
+      member: { role: "owner" },
+      workspaceRequiresPasskey: true,
+    };
+    expect(refusalCode(() => guard.canActivate(context(req)))).toBe("PASSKEY_SIGN_IN_REQUIRED");
+  });
+
+  it("never applies to clients", () => {
+    const req: FakeRequest = {
+      originalUrl: "/api/projects/mine",
+      user: { id: "u1" },
+      session: { secondFactor: null },
+      member: { role: "member" },
+      workspaceRequiresPasskey: true,
+    };
+    expect(guard.canActivate(context(req))).toBe(true);
+  });
+
+  it("applies on organization routes when another workspace requires it", () => {
+    const req: FakeRequest = {
+      originalUrl: "/api/auth/organization/invite-member",
+      user: { id: "u1" },
+      session: { secondFactor: null },
+      member: { role: "member" },
+      staffInPasskeyWorkspace: true,
+    };
+    expect(refusalCode(() => guard.canActivate(context(req, true)))).toBe("PASSKEY_REQUIRED");
   });
 });

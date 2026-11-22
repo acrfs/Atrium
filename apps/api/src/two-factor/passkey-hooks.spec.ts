@@ -104,7 +104,7 @@ describe("passkeyBeforeHook", () => {
     const f = fakes({ deleteOutcome: "last_factor" });
     await expect(
       passkeyBeforeHook(before({ path: "/passkey/delete-passkey", body: { id: "pk1" } }), f.deps),
-    ).rejects.toThrow("you can't remove your last way to provide it");
+    ).rejects.toThrow("you can't remove your last way to sign in");
     expect(f.sendAlert).not.toHaveBeenCalled();
   });
 
@@ -166,13 +166,22 @@ describe("passkeyAfterHook", () => {
     expect(f.sendAlert).toHaveBeenCalledWith("u1", { kind: "passkey_added" });
   });
 
-  it("keeps an already verified session's factor", async () => {
+  it("keeps a passkey session's factor", async () => {
+    const f = fakes();
+    await passkeyAfterHook(
+      after({ path: "/passkey/verify-registration", currentSession: { token: "t1", secondFactor: "passkey" }, newSessionToken: null }),
+      f.deps,
+    );
+    expect(f.sessionUpdate).not.toHaveBeenCalled();
+  });
+
+  it("makes a session that passed the authenticator app a passkey one once it adds a passkey", async () => {
     const f = fakes();
     await passkeyAfterHook(
       after({ path: "/passkey/verify-registration", currentSession: { token: "t1", secondFactor: "totp" }, newSessionToken: null }),
       f.deps,
     );
-    expect(f.sessionUpdate).not.toHaveBeenCalled();
+    expect(f.sessionUpdate).toHaveBeenCalledWith({ where: { token: "t1" }, data: { secondFactor: "passkey" } });
   });
 
 });
