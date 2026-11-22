@@ -24,10 +24,14 @@ Changes made to the original software:
 Fonts added: Inter (web text), Instrument Serif (web wordmark and emails), Fraunces and Outfit (emails),
 Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
 
-- Password sync for the studio owner: an internal endpoint (`apps/api/src/studio-sync/`), off unless
-  `STUDIO_SYNC_TOKEN` is set, that sets one user's sign-in password and the matching SMTP password,
-  used by the separate `studio-account/` service (account.shanastudios.co). `MailService` gained
-  `clearSmtpTransporters()` so a changed SMTP password applies at once.
+- Password page for the studio owner: internal endpoints (`apps/api/src/studio-sync/`), off unless
+  `STUDIO_SYNC_TOKEN` is set, that check and set one user's sign-in password and email her a notice,
+  used by the separate `studio-account/` service (account.shanastudios.co). That password is also her
+  Google Workspace sign-in (see the Google entry below). `MailService` gained `clearSmtpTransporters()`
+  so a changed SMTP password applies at once.
+
+- `EMAIL_REPLY_TO`: when set, every email the portal sends carries that Reply-To, so mail sent from a
+  send-only address (notifications@portal.shanastudios.co) is answered to the studio's own inbox.
 
 - A Developer role (`developer`) for whoever runs the portal's technical side: workspace and email
   settings, branding, integration destinations and sign-in security, with no access to projects,
