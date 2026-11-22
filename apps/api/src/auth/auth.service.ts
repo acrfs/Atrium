@@ -51,7 +51,7 @@ import { stampFor } from "../two-factor/second-factor";
 import { TWO_FACTOR_BEFORE_PATHS, twoFactorAfterHook, twoFactorBeforeHook } from "../two-factor/two-factor-hooks";
 import { INTERNAL_CHECK_TOKEN, verifyOwnCode } from "../two-factor/verify-own-code";
 import type { CodeApi } from "../two-factor/verify-own-code";
-import { isStaffAnywhere, isStaffInRequiringWorkspace } from "../two-factor/staff-requirement";
+import { isStaffAnywhere, isStaffInPasskeyWorkspace, isStaffInRequiringWorkspace } from "../two-factor/staff-requirement";
 import { hookUserId, PASSKEY_BEFORE_PATHS, passkeyAfterHook, passkeyBeforeHook } from "../two-factor/passkey-hooks";
 import type { PasskeyAfterInput, PasskeyHookDeps } from "../two-factor/passkey-hooks";
 import { claimTotpDisable, deletePasskeyGuarded, releaseTotpDisable } from "../two-factor/passkey-delete";
@@ -317,7 +317,13 @@ export class AuthService {
       ...twoFactorDeps,
       isStaffAnywhere: (userId: string): Promise<boolean> => isStaffAnywhere(this.prisma, userId),
       deletePasskey: (userId: string, passkeyId: string): Promise<PasskeyDeleteOutcome> =>
-        deletePasskeyGuarded(this.prisma, userId, passkeyId, (id: string) => isStaffInRequiringWorkspace(this.prisma, id)),
+        deletePasskeyGuarded(
+          this.prisma,
+          userId,
+          passkeyId,
+          (id: string) => isStaffInRequiringWorkspace(this.prisma, id),
+          (id: string) => isStaffInPasskeyWorkspace(this.prisma, id),
+        ),
       passkeyOwner: async (credentialId: string): Promise<string | null> => {
         const passkey: { userId: string } | null = await this.prisma.passkey.findFirst({
           where: { credentialID: credentialId },

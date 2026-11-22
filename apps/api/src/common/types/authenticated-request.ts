@@ -70,6 +70,10 @@ export interface AuthenticatedRequest extends Request {
   workspaceRequiresTwoFactor?: boolean;
   /** Auth routes only: staff of any workspace that requires 2FA. Set only when the user has no factor. */
   staffInRequiringWorkspace?: boolean;
+  /** The active workspace's "Require passkeys for staff" setting, set by SessionMiddleware for cookie sessions. */
+  workspaceRequiresPasskey?: boolean;
+  /** Auth routes only: staff of any workspace that requires passkeys. Set only when the session isn't a passkey one. */
+  staffInPasskeyWorkspace?: boolean;
   /** Auth routes only: a session cookie was sent but could not be resolved. */
   sessionLookupFailed?: boolean;
 }

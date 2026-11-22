@@ -20,12 +20,15 @@ function lockUser(tx: Pick<PrismaService, "$queryRaw">, userId: string): Promise
  * removals at the same moment run one after the other and the second sees
  * the first's result; checking in a hook and letting the plugin delete would
  * let both through. A TOTP turn-off in progress counts as TOTP being off.
+ * Staff of a workspace that requires passkeys keep their last passkey even
+ * with the authenticator app on: the app alone no longer lets them sign in.
  */
 export async function deletePasskeyGuarded(
   prisma: Tx,
   userId: string,
   passkeyId: string,
   isStaffInRequiringWorkspace: (userId: string) => Promise<boolean>,
+  isStaffInPasskeyWorkspace: (userId: string) => Promise<boolean> = async () => false,
 ): Promise<PasskeyDeleteOutcome> {
   return prisma.$transaction(async (tx) => {
     await lockUser(tx, userId);
@@ -40,6 +43,7 @@ export async function deletePasskeyGuarded(
     if (passkeys <= 1 && !totpStays && (await isStaffInRequiringWorkspace(userId))) {
       return "last_factor";
     }
+    if (passkeys <= 1 && (await isStaffInPasskeyWorkspace(userId))) return "last_factor";
     await tx.passkey.deleteMany({ where: { id: passkeyId, userId } });
     return "deleted";
   });

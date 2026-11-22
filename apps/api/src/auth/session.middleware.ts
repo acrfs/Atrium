@@ -8,7 +8,7 @@ import { LastSeenTracker } from "./last-seen.tracker";
 import { SessionCache } from "./session-cache";
 import type { CachedSession } from "./session-cache";
 import { hasSecondFactor } from "../two-factor/second-factor";
-import { isStaffInRequiringWorkspace } from "../two-factor/staff-requirement";
+import { isStaffInPasskeyWorkspace, isStaffInRequiringWorkspace } from "../two-factor/staff-requirement";
 import { isStaffRole } from "../common/helpers/privileged-role";
 import { PrismaService } from "../prisma/prisma.service";
 import { bearerToken, isMcpPath, mcpOAuthEnabled, ORG_MEMBER_FIELDS, RateLimiter } from "../common";
@@ -46,6 +46,8 @@ type AuthReq = Partial<
     | "authRateLimited"
     | "workspaceRequiresTwoFactor"
     | "staffInRequiringWorkspace"
+    | "workspaceRequiresPasskey"
+    | "staffInPasskeyWorkspace"
     | "sessionLookupFailed"
   >
 > &
@@ -177,8 +179,13 @@ export class SessionMiddleware implements NestMiddleware {
   private isGated(authReq: AuthReq): boolean {
     const user: AuthUser | undefined = authReq.user;
     if (!user) return false;
-    if (hasSecondFactor(user)) return !authReq.session?.secondFactor;
-    return authReq.workspaceRequiresTwoFactor === true && isStaffRole(authReq.member?.role);
+    if (hasSecondFactor(user) && !authReq.session?.secondFactor) return true;
+    const isStaff: boolean = isStaffRole(authReq.member?.role);
+    if (authReq.workspaceRequiresPasskey === true && isStaff) {
+      return user.hasPasskey !== true || authReq.session?.secondFactor !== "passkey";
+    }
+    if (hasSecondFactor(user)) return false;
+    return authReq.workspaceRequiresTwoFactor === true && isStaff;
   }
 
   /** Drops expired entries from a cache that has grown past its soft cap. */
@@ -226,6 +233,7 @@ export class SessionMiddleware implements NestMiddleware {
           authReq.user = cached.user;
           authReq.session = cached.session;
           authReq.workspaceRequiresTwoFactor = cached.workspaceRequiresTwoFactor;
+          authReq.workspaceRequiresPasskey = cached.workspaceRequiresPasskey;
           if (cached.organization) authReq.organization = cached.organization;
           if (cached.member) {
             authReq.member = cached.member;
@@ -273,7 +281,7 @@ export class SessionMiddleware implements NestMiddleware {
           }),
           this.prisma.systemSettings.findUnique({
             where: { organizationId: activeOrgId },
-            select: { requireTwoFactor: true },
+            select: { requireTwoFactor: true, requirePasskey: true },
           }),
         ]);
         // Organization only alongside a membership, as before: AuthGuard reads
@@ -282,6 +290,7 @@ export class SessionMiddleware implements NestMiddleware {
           authReq.organization = organization;
           authReq.member = member;
           authReq.workspaceRequiresTwoFactor = settings?.requireTwoFactor === true;
+          authReq.workspaceRequiresPasskey = settings?.requirePasskey === true;
           // Cookie sessions only: an API key or MCP client is not a person visiting.
           void this.lastSeen.touch(member.id);
         }
@@ -291,6 +300,15 @@ export class SessionMiddleware implements NestMiddleware {
       // routes the gate also needs to know whether 2FA setup is owed anywhere.
       if (isAuthRoute && session && authReq.user && !hasSecondFactor(authReq.user)) {
         authReq.staffInRequiringWorkspace = await isStaffInRequiringWorkspace(this.prisma, session.user.id);
+      }
+      // Likewise for passkeys: only a session that isn't already a passkey one can owe them.
+      if (
+        isAuthRoute &&
+        session &&
+        authReq.user &&
+        (authReq.user.hasPasskey !== true || (session.session as AuthSession).secondFactor !== "passkey")
+      ) {
+        authReq.staffInPasskeyWorkspace = await isStaffInPasskeyWorkspace(this.prisma, session.user.id);
       }
 
       // Cache the resolved session. Not on auth routes: they may change it.
@@ -303,6 +321,7 @@ export class SessionMiddleware implements NestMiddleware {
           organization: authReq.organization,
           member: authReq.member,
           workspaceRequiresTwoFactor: authReq.workspaceRequiresTwoFactor,
+          workspaceRequiresPasskey: authReq.workspaceRequiresPasskey,
           expiresAt: Date.now() + SESSION_CACHE_TTL,
         });
       }

@@ -49,3 +49,14 @@ Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
   `invoice.updated` webhook (`POST /api/payments/billcom/webhook/:orgId`, status re-read from BILL)
   and a 10 minute poll. New columns on `SystemSettings` and `Invoice` and a `BillcomCustomer` model.
   Stripe checkout still runs, through the same shared access checks, when Bill.com is not connected.
+
+- Required passkeys for staff (`SystemSettings.requirePasskey`, Settings > Security > "Require
+  passkeys for staff", `PUT /api/two-factor/passkey-requirement`, owner-only, needs the owner's own
+  passkey). Owners, admins and developers then need a passkey and must sign in with it: without one
+  they can only add one (`PASSKEY_REQUIRED`, `/2fa/setup` offers passkeys only), and a session that
+  passed the authenticator app, a recovery code or a trusted device must sign in again with the
+  passkey (`PASSKEY_SIGN_IN_REQUIRED`). Their last passkey can't be removed. Clients are never asked.
+  Google Workspace sign-in (`/api/sso/google/authorize`) follows the same rule. The second-factor gate
+  now also holds developers to the existing "Require two-factor for staff" setting. Recovery: an owner
+  resets another member from Team; a locked-out owner needs `script:disable-2fa <email> --passkeys`
+  on the server, then adds a new passkey at the next sign-in.

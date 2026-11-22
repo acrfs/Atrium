@@ -50,6 +50,14 @@ describe("gatePage", () => {
     expect(gatePage({ originalUrl: "/", user: shana as never, session: session as never, workspaceRequiresTwoFactor: true, member: { role: "owner" } as never })).toBe("/2fa/setup");
     expect(gatePage({ originalUrl: "/", user: shana as never, session: session as never })).toBeNull();
   });
+
+  it("where passkeys are required, lets Google in only after a passkey sign-in", () => {
+    const owner = { member: { role: "owner" } as never, workspaceRequiresPasskey: true };
+    expect(gatePage({ originalUrl: "/", user: shana as never, session: session as never, ...owner })).toBe("/2fa/setup");
+    const withPasskey = { ...shana, twoFactorEnabled: true, hasPasskey: true } as never;
+    expect(gatePage({ originalUrl: "/", user: withPasskey, session: { ...session, secondFactor: "totp" } as never, ...owner })).toBe("/login/2fa");
+    expect(gatePage({ originalUrl: "/", user: withPasskey, session: { ...session, secondFactor: "passkey" } as never, ...owner })).toBeNull();
+  });
 });
 
 describe("GoogleSsoController", () => {

@@ -8,15 +8,24 @@ import { hasSecondFactor } from "../two-factor/second-factor";
 import { GoogleSsoService, type AuthorizeProblem, type AuthorizeQuery, type TokenRequest, type TokenResult } from "./google-sso.service";
 
 /** The request fields this controller reads; every one may be missing. */
-type SsoRequest = Partial<Pick<AuthenticatedRequest, "user" | "session" | "member" | "workspaceRequiresTwoFactor">> & {
+type SsoRequest = Partial<
+  Pick<AuthenticatedRequest, "user" | "session" | "member" | "workspaceRequiresTwoFactor" | "workspaceRequiresPasskey">
+> & {
   originalUrl: string;
 };
 
 /** The page that resolves a session the second-factor gate holds back, or null when it may pass. */
 export function gatePage(req: SsoRequest): "/login/2fa" | "/2fa/setup" | null {
   if (!req.user) return null;
-  if (hasSecondFactor(req.user)) return req.session?.secondFactor ? null : "/login/2fa";
-  if (req.workspaceRequiresTwoFactor === true && isStaffRole(req.member?.role)) return "/2fa/setup";
+  const isStaff: boolean = isStaffRole(req.member?.role);
+  if (hasSecondFactor(req.user) && !req.session?.secondFactor) return "/login/2fa";
+  // Same rule as the second-factor gate: staff need a passkey and must have signed in with it.
+  if (req.workspaceRequiresPasskey === true && isStaff) {
+    if (req.user.hasPasskey !== true) return "/2fa/setup";
+    return req.session?.secondFactor === "passkey" ? null : "/login/2fa";
+  }
+  if (hasSecondFactor(req.user)) return null;
+  if (req.workspaceRequiresTwoFactor === true && isStaff) return "/2fa/setup";
   return null;
 }
 

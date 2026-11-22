@@ -8,6 +8,8 @@ export interface CachedSession {
   member?: OrgMember;
   /** The active workspace's "Require 2FA for staff" setting. */
   workspaceRequiresTwoFactor?: boolean;
+  /** The active workspace's "Require passkeys for staff" setting. */
+  workspaceRequiresPasskey?: boolean;
   apiKeyId?: string;
   bearerKind?: BearerKind;
   expiresAt: number;
@@ -48,6 +50,11 @@ export class SessionCache {
     for (const [token, entry] of this.entries) {
       if (entry.user.id === userId) this.entries.delete(token);
     }
+  }
+
+  /** Drops every entry, e.g. after a workspace-wide sign-in rule changes. */
+  clear(): void {
+    this.entries.clear();
   }
 
   private evictExpired(): void {
