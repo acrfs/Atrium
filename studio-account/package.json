@@ -1,8 +1,8 @@
 {
   "name": "studio-account",
   "private": true,
-  "version": "2.0.0",
-  "description": "Shana Studios account page: change the one password used for the client portal and Google Workspace sign-in.",
+  "version": "2.1.0",
+  "description": "Shana Studios account page: change the one password used for the client portal and Google Workspace sign-in, and move mail and calendars from her old Gmail.",
   "type": "module",
   "main": "server.mjs",
   "scripts": {

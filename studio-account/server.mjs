@@ -5,6 +5,9 @@ import { readFileSync } from "node:fs";
 import { passwordProblems, usernameMatches, verifyPortal, setPortalPassword } from "./sync.mjs";
 import { pageHtml, signInHtml } from "./views.mjs";
 import { createSessions, readCookie, sessionCookie, SESSION_COOKIE, SESSION_TTL_MS } from "./session.mjs";
+import { authUrl, checkLinked, createStates, exchangeCode, googleClient, migrateConfig, revoke } from "./google.mjs";
+import { newProgress, runMigration } from "./migrate.mjs";
+import { callbackHtml } from "./views.mjs";
 
 const env = process.env;
 const cfg = {
@@ -13,6 +16,33 @@ const cfg = {
   portalLoginEmail: env.PORTAL_LOGIN_EMAIL ?? env.MAILBOX ?? "shana@shanastudios.co",
 };
 const PORT = Number(env.PORT ?? 8090);
+
+// Moving mail and calendars from her old Gmail account. Google tokens live
+// only in memory and are revoked when the copy ends or she disconnects.
+const mig = migrateConfig(env);
+const states = createStates();
+const linked = { source: null, target: null };
+let connectError = "";
+const progress = newProgress();
+
+function migrationStatus() {
+  return {
+    enabled: mig.enabled,
+    source: linked.source ? { email: linked.source.email } : null,
+    target: linked.target ? { email: linked.target.email } : null,
+    targetEmail: mig.targetEmail,
+    error: connectError,
+    progress,
+  };
+}
+
+async function unlinkAll() {
+  for (const role of ["source", "target"]) {
+    const acct = linked[role];
+    linked[role] = null;
+    await revoke(acct);
+  }
+}
 const LOGO = readFileSync(new URL("./logo.png", import.meta.url));
 
 // At most 5 tries per 15 minutes from one address, 20 overall, so the page
@@ -64,7 +94,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost");
     if (req.method === "GET" && url.pathname === "/") {
-      return send(res, 200, "text/html; charset=utf-8", signedIn(req) ? pageHtml() : signInHtml());
+      return send(res, 200, "text/html; charset=utf-8", signedIn(req) ? pageHtml({ migrate: mig.enabled }) : signInHtml());
     }
     if (req.method === "GET" && url.pathname === "/logo.png") {
       res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
@@ -90,6 +120,72 @@ const server = http.createServer(async (req, res) => {
       if (!check.ok) return check.authFailed ? wrong() : send(res, 502, "application/json", JSON.stringify({ error: check.detail }));
       console.log(new Date().toISOString(), "signed in");
       return send(res, 200, "application/json", '{"ok":true}', { "set-cookie": sessionCookie(sessions.issue(), SESSION_TTL_MS / 1000) });
+    }
+    if (req.method === "GET" && url.pathname === "/google/callback") {
+      // Google sends her back here. The session cookie is SameSite=Strict, so it
+      // isn't sent on this cross-site return; the one-use state proves this page
+      // (signed in) started the sign-in. Then a same-site reload shows the page.
+      const role = states.take(url.searchParams.get("state") ?? "");
+      if (!role || !mig.enabled) return send(res, 400, "text/html; charset=utf-8", callbackHtml("That sign-in link expired. Go back and press Connect again."));
+      if (url.searchParams.get("error")) {
+        connectError = "Google sign-in was cancelled.";
+        return send(res, 200, "text/html; charset=utf-8", callbackHtml(""));
+      }
+      try {
+        const acct = await exchangeCode(mig, url.searchParams.get("code") ?? "");
+        const problem = checkLinked(mig, role, acct);
+        if (problem) {
+          await revoke(acct);
+          connectError = problem;
+        } else {
+          await revoke(linked[role]);
+          linked[role] = acct;
+          connectError = "";
+          console.log(new Date().toISOString(), "migrate linked", role);
+        }
+      } catch (err) {
+        connectError = err.message;
+      }
+      return send(res, 200, "text/html; charset=utf-8", callbackHtml(""));
+    }
+    if (url.pathname.startsWith("/migrate/")) {
+      if (!signedIn(req)) return send(res, 401, "application/json", JSON.stringify({ error: "Your sign-in expired. Refresh the page and sign in again." }));
+      if (!mig.enabled) return send(res, 404, "application/json", '{"error":"Not set up"}');
+      if (req.method === "GET" && url.pathname === "/migrate/status") {
+        return send(res, 200, "application/json", JSON.stringify(migrationStatus()));
+      }
+      if (req.method !== "POST") return send(res, 405, "application/json", '{"error":"POST only"}');
+      if (req.headers["content-type"] !== "application/json") return send(res, 415, "application/json", '{"error":"JSON only"}');
+      const body = JSON.parse((await readBody(req)) || "{}");
+      const running = progress.state === "running";
+      if (url.pathname === "/migrate/connect") {
+        if (running) return send(res, 409, "application/json", '{"error":"The copy is running. Wait for it to finish."}');
+        const role = body.role === "target" ? "target" : body.role === "source" ? "source" : null;
+        if (!role) return send(res, 400, "application/json", '{"error":"Unknown account"}');
+        const hint = role === "target" ? mig.targetEmail : mig.sourceEmail;
+        return send(res, 200, "application/json", JSON.stringify({ url: authUrl(mig, role, states.issue(role), hint) }));
+      }
+      if (url.pathname === "/migrate/start") {
+        if (running) return send(res, 409, "application/json", '{"error":"The copy is already running."}');
+        if (!linked.source || !linked.target) return send(res, 400, "application/json", '{"error":"Connect both accounts first."}');
+        const opts = { mail: body.mail !== false, calendar: body.calendar !== false };
+        if (!opts.mail && !opts.calendar) return send(res, 400, "application/json", '{"error":"Pick email, calendar or both."}');
+        const src = googleClient(mig, linked.source);
+        const dst = googleClient(mig, linked.target);
+        console.log(new Date().toISOString(), "migrate start", JSON.stringify(opts));
+        runMigration(src, dst, progress, opts).then(async (p) => {
+          console.log(new Date().toISOString(), "migrate", p.state, JSON.stringify({ mail: p.mail, calendar: p.calendar }));
+          await unlinkAll();
+        });
+        return send(res, 200, "application/json", JSON.stringify(migrationStatus()));
+      }
+      if (url.pathname === "/migrate/disconnect") {
+        if (running) return send(res, 409, "application/json", '{"error":"The copy is running. Wait for it to finish."}');
+        await unlinkAll();
+        connectError = "";
+        return send(res, 200, "application/json", JSON.stringify(migrationStatus()));
+      }
+      return send(res, 404, "application/json", '{"error":"Not found"}');
     }
     if (req.method === "POST" && url.pathname === "/logout") {
       return send(res, 200, "application/json", '{"ok":true}', { "set-cookie": sessionCookie("", 0) });

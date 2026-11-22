@@ -59,7 +59,7 @@ test("set: one line for the sign-in and one for the notice", async () => {
 });
 
 test("pages mention no Titan, no website step and no address", () => {
-  for (const html of [pageHtml(), signInHtml()]) {
+  for (const html of [pageHtml(), pageHtml({ migrate: true }), signInHtml()]) {
     assert.doesNotMatch(html, /Titan|webmail|lead form|Vercel/i);
     assert.doesNotMatch(html, /shana@/);
   }

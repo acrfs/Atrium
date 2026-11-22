@@ -43,6 +43,7 @@ const head = (title) => `<!doctype html>
   .rules { font-size: .9rem; color: var(--peri); margin-top: 8px; }
   button { margin-top: 24px; appearance:none; border:0; border-radius: 999px; padding: 14px 28px; cursor:pointer;
     background: var(--ink); color: var(--paper); font: 620 1.05rem/1 ${S.cta}; font-variation-settings: "SOFT" 100; }
+  button.alt { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); padding: 10px 20px; margin-top: 8px; font-size: .95rem; }
   button[disabled] { opacity: .55; cursor: progress; }
   .msg { margin-top: 20px; padding: 14px 16px; border-radius: 12px; background: #fff; border: 1.5px solid var(--line); }
   .msg.err { border-color: var(--alert); color: var(--alert); }
@@ -59,7 +60,7 @@ const head = (title) => `<!doctype html>
 <body>
 `;
 
-export function pageHtml() {
+export function pageHtml({ migrate = false } = {}) {
   return `${head("Account settings · Shana Studios")}<main>
   <img class="mark" src="/logo.png" alt="Shana Studios">
   <h1>Account settings</h1>
@@ -76,6 +77,7 @@ export function pageHtml() {
     <button id="go" type="submit">Change password</button>
   </form>
   <div id="out" aria-live="polite"></div>
+${migrate ? moveSection : ""}
   <footer>Use the new password the next time the portal or Google asks you to sign in.<br><br><a href="#" id="out-link">Sign out</a></footer>
 </main>
 <script>
@@ -103,6 +105,88 @@ f.addEventListener("submit", async (e) => {
   finally { go.disabled = false; go.textContent = "Change password"; }
 });
 </script>
+${migrate ? moveScript : ""}
+</body>
+</html>`;
+}
+
+const moveSection = `
+  <section id="move" style="margin-top:56px;padding-top:32px;border-top:1.5px solid ${S.line}">
+    <h2 style="font:400 2rem/1.1 ${S.serif};margin:0 0 8px">Move from your old Gmail</h2>
+    <p class="lead" style="margin-bottom:8px">Copies your email (with its labels) and your calendars from your old Gmail account into your Shana Studios account. Nothing in the old account is changed or deleted.</p>
+    <ol class="steps" style="padding-left:1.2rem;margin:16px 0 0">
+      <li style="margin-bottom:14px"><b>Old account.</b> <span id="src-state">Not connected.</span><br><button type="button" class="alt" id="src-btn">Connect old Gmail</button></li>
+      <li style="margin-bottom:14px"><b>Shana Studios account.</b> <span id="dst-state">Not connected.</span><br><button type="button" class="alt" id="dst-btn">Connect Shana Studios account</button></li>
+      <li><b>Copy.</b>
+        <div class="show"><input id="m-mail" type="checkbox" checked><label for="m-mail" style="margin:0;font-weight:400">Email</label>
+        <input id="m-cal" type="checkbox" checked style="margin-left:16px"><label for="m-cal" style="margin:0;font-weight:400">Calendars</label></div>
+        <button type="button" id="m-go" disabled>Start copying</button>
+      </li>
+    </ol>
+    <div id="m-out" aria-live="polite"></div>
+    <p class="rules">Google may say the app isn't verified. It's the studio's own tool: choose Advanced, then continue. Running it again later is safe: anything already copied is skipped. When the copy ends, the tool's access to both accounts is removed.</p>
+    <p class="rules"><a href="#" id="m-reset">Disconnect both accounts</a></p>
+  </section>`;
+
+const moveScript = `<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+  let timer = null;
+  function render(s){
+    const p = s.progress, running = p.state === "running";
+    $("src-state").textContent = s.source ? "Connected: " + s.source.email : "Not connected.";
+    $("dst-state").textContent = s.target ? "Connected: " + s.target.email : "Not connected (use " + s.targetEmail + ").";
+    $("src-btn").textContent = s.source ? "Use a different account" : "Connect old Gmail";
+    $("dst-btn").textContent = s.target ? "Connect again" : "Connect Shana Studios account";
+    $("src-btn").disabled = $("dst-btn").disabled = running;
+    $("m-go").disabled = running || !s.source || !s.target;
+    $("m-go").textContent = running ? "Copying" : "Start copying";
+    let html = "";
+    if (s.error) html += '<div class="msg err">' + esc(s.error) + '</div>';
+    if (p.state !== "idle") {
+      const m = p.mail, c = p.calendar;
+      const head = running ? esc(p.message) + "…" : p.state === "done" ? "Finished." : "Stopped: " + esc(p.message);
+      html += '<div class="msg' + (p.state === "failed" ? " err" : "") + '"><b>' + head + '</b>'
+        + '<ul class="results">'
+        + '<li class="ok"><span class="i">✉</span><span><b>Email</b><small>' + m.copied + ' copied, ' + m.already + ' already there, ' + m.skipped + ' drafts or chats left out' + (m.failed ? ', ' + m.failed + ' could not be copied' : '') + (m.total ? ' (old account has about ' + m.total + ')' : '') + '</small></span></li>'
+        + '<li class="ok"><span class="i">◷</span><span><b>Calendars</b><small>' + c.calendars + ' calendars, ' + c.copied + ' events copied' + (c.skipped ? ', ' + c.skipped + ' special events left out' : '') + (c.failed ? ', ' + c.failed + ' could not be copied' : '') + (c.others ? '. ' + c.others + ' calendars other people share with you were left as they are' : '') + '</small></span></li>'
+        + '</ul>'
+        + (p.errors.length && !running ? '<small style="display:block;margin-top:10px;color:${S.alert}">' + p.errors.slice(-5).map(esc).join("<br>") + '</small>' : '')
+        + '</div>';
+    }
+    $("m-out").innerHTML = html;
+    clearTimeout(timer);
+    if (running) timer = setTimeout(load, 3000);
+  }
+  async function load(){
+    try { const r = await fetch("/migrate/status"); if (r.ok) render(await r.json()); } catch {}
+  }
+  async function post(path, body){
+    const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
+    const j = await r.json();
+    if (!r.ok) { $("m-out").innerHTML = '<div class="msg err">' + esc(j.error || "Something went wrong.") + '</div>'; return null; }
+    return j;
+  }
+  async function connect(role){ const j = await post("/migrate/connect", { role }); if (j) location.href = j.url; }
+  $("src-btn").addEventListener("click", () => connect("source"));
+  $("dst-btn").addEventListener("click", () => connect("target"));
+  $("m-go").addEventListener("click", async () => { const j = await post("/migrate/start", { mail: $("m-mail").checked, calendar: $("m-cal").checked }); if (j) render(j); });
+  $("m-reset").addEventListener("click", async (e) => { e.preventDefault(); const j = await post("/migrate/disconnect"); if (j) render(j); });
+  load();
+})();
+</script>`;
+
+/** Shown for a moment after Google sends her back; a same-site reload then
+ * carries her sign-in cookie again. */
+export function callbackHtml(problem) {
+  return `${head("Account settings · Shana Studios")}<main>
+  <img class="mark" src="/logo.png" alt="Shana Studios">
+  <h1>${problem ? "Try again" : "One moment"}</h1>
+  <p class="lead">${problem ? esc(problem) : "Taking you back to your account page."}</p>
+  <p><a href="/#move">Back to the account page</a></p>
+</main>
+${problem ? "" : '<script>location.replace("/#move");</script>'}
 </body>
 </html>`;
 }
