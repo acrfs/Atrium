@@ -214,7 +214,7 @@ test.describe("Passkeys", () => {
     const list = (await (await page.request.get(`${API}/api/auth/passkey/list-user-passkeys`)).json()) as { id: string }[];
     const remove = await authPost(page, "/passkey/delete-passkey", { id: list[0].id });
     expect(remove.status()).toBe(403);
-    expect(await remove.text()).toContain("last way to provide it");
+    expect(await remove.text()).toContain("last way to sign in");
   });
 
   test("clients can't add passkeys, and adding one never signs anyone in", async ({ browser }) => {
@@ -349,7 +349,9 @@ test.describe("Required passkeys for staff", () => {
     await addPasskeyInSettings(page, "Owner laptop");
     const toggle = page.getByRole("checkbox", { name: /require passkeys for staff/i });
     await expect(toggle).toBeEnabled();
-    await toggle.check();
+    // Controlled by the server's answer, so click and wait rather than check().
+    await toggle.click();
+    await expect(toggle).toBeChecked();
     await expect(page.getByText(/lost every passkey/i)).toBeVisible();
     expect((await status(page)).workspaceRequiresPasskey).toBe(true);
     // The owner signed in with a password and then added the passkey, which counts as a passkey session.
