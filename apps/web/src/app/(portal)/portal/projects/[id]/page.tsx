@@ -280,6 +280,9 @@ export default function PortalProjectDetailPage() {
   const currency = useCurrency();
   const { preview } = usePreviewMode();
   const session = useSession();
+  // Owners and admins can open any project here, but only the project's client
+  // may accept, decline or pick an option; the API refuses anyone else.
+  const studioView: boolean = !preview && (session.role === "owner" || session.role === "admin");
   const [latestInvoice, setLatestInvoice] = useState<InvoiceSummary | null>(null);
   const [quickReplyText, setQuickReplyText] = useState("");
   const [sendingQuickReply, setSendingQuickReply] = useState(false);
@@ -1638,7 +1641,10 @@ export default function PortalProjectDetailPage() {
                                     </span>
                                   ) : (
                                     <>
-                                      {doc.requiresApproval && !hasResponded && (
+                                      {doc.requiresApproval && !hasResponded && studioView && (
+                                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-[var(--muted)] text-[var(--muted-foreground)]">Waiting on client</span>
+                                      )}
+                                      {doc.requiresApproval && !hasResponded && !studioView && (
                                         <>
                                           <button onClick={() => openDocumentConfirm(doc, "accepted")} className="px-3 py-1 text-xs font-medium rounded-lg text-white transition-opacity hover:opacity-90" style={{ backgroundColor: "#15803d" }}>Accept</button>
                                           <button onClick={() => openDocumentConfirm(doc, "declined")} className="px-3 py-1 text-xs font-medium rounded-lg text-white transition-opacity hover:opacity-90" style={{ backgroundColor: "#b91c1c" }}>Decline</button>
@@ -1660,7 +1666,7 @@ export default function PortalProjectDetailPage() {
                           </div>
 
                           {/* Radio options — shown when document has options */}
-                          {hasOptions && !isReadOnly && (
+                          {hasOptions && !isReadOnly && (!studioView || (hasResponded && !!lastResponse?.reason)) && (
                             <div className="mt-3 pt-3 border-t border-[var(--border)]">
                               {optionsQuestion && (
                                 <p className="text-sm font-medium mb-2">{optionsQuestion}</p>
