@@ -13,6 +13,7 @@ import { PaymentsService } from "./payments.service";
 import { CreateCheckoutDto, ConnectAuthorizeDto, SaveDirectKeysDto, SavePaymentMethodsDto } from "./payments.dto";
 import { AuthGuard, RolesGuard, Roles, CurrentUser, CurrentOrg, Public, RequiresFeature } from "../common";
 import { BillingService } from "../billing/billing.service";
+import { BillcomService } from "./billcom/billcom.service";
 
 @Controller("payments")
 @UseGuards(AuthGuard, RolesGuard)
@@ -20,6 +21,7 @@ export class PaymentsController {
   constructor(
     private paymentsService: PaymentsService,
     private billingService: BillingService,
+    private billcomService: BillcomService,
   ) {}
 
   // ── Unified status ──
@@ -38,11 +40,12 @@ export class PaymentsController {
 
   @Get("enabled")
   async isEnabled(@CurrentOrg("id") orgId: string) {
-    const [status, entitled] = await Promise.all([
+    const [status, billcom, entitled] = await Promise.all([
       this.paymentsService.getPaymentStatus(orgId),
+      this.billcomService.isEnabled(orgId),
       this.billingService.hasFeature(orgId, "online_payments"),
     ]);
-    return { enabled: status.enabled && entitled };
+    return { enabled: (status.enabled || billcom) && entitled };
   }
 
   // ── Direct keys mode ──
@@ -117,12 +120,16 @@ export class PaymentsController {
 
   @Post("checkout/:invoiceId")
   @RequiresFeature("online_payments")
-  createCheckout(
+  async createCheckout(
     @Param("invoiceId") invoiceId: string,
     @CurrentUser("id") userId: string,
     @CurrentOrg("id") orgId: string,
     @Body() dto: CreateCheckoutDto,
   ) {
+    // Bill.com, when connected, takes the payment instead of Stripe.
+    if (await this.billcomService.isEnabled(orgId)) {
+      return this.billcomService.createPaymentLink(invoiceId, userId, orgId, dto.successUrl);
+    }
     return this.paymentsService.createCheckoutSession(
       invoiceId,
       userId,

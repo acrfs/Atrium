@@ -432,28 +432,16 @@ export class PaymentsService {
 
   // ── Invoice Checkout (mode-agnostic) ──
 
-  async createCheckoutSession(
-    invoiceId: string,
-    userId: string,
-    orgId: string,
-    successUrl: string,
-    cancelUrl: string,
-  ) {
-    this.validateAppUrl(successUrl);
-    this.validateAppUrl(cancelUrl);
-
-    const [config, invoice, settings] = await Promise.all([
-      this.getStripeConfig(orgId),
+  /**
+   * The invoice a portal client may pay: visible to clients, on a project they
+   * are assigned to, and still owed. Shared by Stripe checkout and Bill.com.
+   */
+  async findPayableInvoice(invoiceId: string, userId: string, orgId: string) {
+    const invoice = await this.prisma.invoice.findFirst({
       // A client must not learn that a draft or cancelled invoice exists.
-      this.prisma.invoice.findFirst({
-        where: { id: invoiceId, organizationId: orgId, status: { notIn: CLIENT_HIDDEN_STATUSES } },
-        include: { lineItems: true },
-      }),
-      this.prisma.systemSettings.findUnique({
-        where: { organizationId: orgId },
-        select: { stripePaymentMethods: true },
-      }),
-    ]);
+      where: { id: invoiceId, organizationId: orgId, status: { notIn: CLIENT_HIDDEN_STATUSES } },
+      include: { lineItems: true },
+    });
 
     if (!invoice) throw new NotFoundException("Invoice not found");
 
@@ -469,6 +457,58 @@ export class PaymentsService {
     if (!["sent", "overdue"].includes(invoice.status)) {
       throw new BadRequestException(`Invoice is ${invoice.status} and cannot be paid`);
     }
+    return invoice;
+  }
+
+  checkAppUrl(url: string): void {
+    this.validateAppUrl(url);
+  }
+
+  /**
+   * Mark an invoice paid once (idempotent), then notify and update the contact.
+   * Returns false when it was already paid.
+   */
+  async markInvoicePaid(
+    invoiceId: string,
+    data: { paidAmount: number; stripePaymentIntentId?: string | null },
+    via: string,
+  ): Promise<boolean> {
+    const result = await this.prisma.invoice.updateMany({
+      where: { id: invoiceId, status: { not: "paid" } },
+      data: { status: "paid", paidAt: new Date(), ...data },
+    });
+    if (result.count === 0) return false;
+
+    this.logger.log(`Invoice ${invoiceId} marked as paid via ${via}`);
+    this.notifications.notifyInvoicePaid(invoiceId);
+    try {
+      await this.contactSync.recordInvoicePaid(invoiceId);
+    } catch (err) {
+      Sentry.captureException(err);
+      this.logger.error("Failed to record invoice paid on contact", err);
+    }
+    return true;
+  }
+
+  async createCheckoutSession(
+    invoiceId: string,
+    userId: string,
+    orgId: string,
+    successUrl: string,
+    cancelUrl: string,
+  ) {
+    this.validateAppUrl(successUrl);
+    this.validateAppUrl(cancelUrl);
+
+    // Config first, so an unconfigured workspace answers "not configured" whatever the invoice.
+    const config = await this.getStripeConfig(orgId);
+    const [invoice, settings] = await Promise.all([
+      this.findPayableInvoice(invoiceId, userId, orgId),
+      this.prisma.systemSettings.findUnique({
+        where: { organizationId: orgId },
+        select: { stripePaymentMethods: true },
+      }),
+    ]);
 
     // Reuse existing open session
     if (invoice.stripeCheckoutSessionId) {
@@ -667,26 +707,13 @@ export class PaymentsService {
 
     const totalCents = calculateInvoiceTotal(invoice);
 
-    // Idempotent update: only mark as paid if not already paid
-    const result = await this.prisma.invoice.updateMany({
-      where: { id: invoice.id, status: { not: "paid" } },
-      data: {
-        status: "paid",
-        paidAt: new Date(),
+    await this.markInvoicePaid(
+      invoice.id,
+      {
         paidAmount: (session.amount_total as number) ?? totalCents,
         stripePaymentIntentId: (session.payment_intent as string) ?? null,
       },
-    });
-
-    if (result.count === 0) return; // Already processed
-
-    this.logger.log(`Invoice ${invoice.invoiceNumber} marked as paid via Stripe`);
-    this.notifications.notifyInvoicePaid(invoice.id);
-    try {
-      await this.contactSync.recordInvoicePaid(invoice.id);
-    } catch (err) {
-      Sentry.captureException(err);
-      this.logger.error("Failed to record invoice paid on contact", err);
-    }
+      "Stripe",
+    );
   }
 }

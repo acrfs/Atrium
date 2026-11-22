@@ -91,6 +91,10 @@ export class SettingsService {
       paymentDetails: settings.paymentDetails ? "••••••••" : null,
       stripeSecretKey: settings.stripeSecretKey ? "••••••••" : null,
       stripeWebhookSecret: settings.stripeWebhookSecret ? "••••••••" : null,
+      billcomUsername: settings.billcomUsername ? "••••••••" : null,
+      billcomPassword: settings.billcomPassword ? "••••••••" : null,
+      billcomDevKey: settings.billcomDevKey ? "••••••••" : null,
+      billcomWebhookKey: settings.billcomWebhookKey ? "••••••••" : null,
       // Instance-wide, not stored: lets the dashboard warn an owner that
       // sign-in cookies travel over plain HTTP.
       insecureCookies: insecureCookiesInProduction(),
@@ -158,6 +162,10 @@ export class SettingsService {
       paymentDetails: settings.paymentDetails ? "••••••••" : null,
       stripeSecretKey: settings.stripeSecretKey ? "••••••••" : null,
       stripeWebhookSecret: settings.stripeWebhookSecret ? "••••••••" : null,
+      billcomUsername: settings.billcomUsername ? "••••••••" : null,
+      billcomPassword: settings.billcomPassword ? "••••••••" : null,
+      billcomDevKey: settings.billcomDevKey ? "••••••••" : null,
+      billcomWebhookKey: settings.billcomWebhookKey ? "••••••••" : null,
     };
   }
 
@@ -169,7 +177,9 @@ export class SettingsService {
     return {
       paymentInstructions: settings?.paymentInstructions ?? null,
       paymentMethod: settings?.paymentMethod ?? null,
-      stripeConnectEnabled: settings?.stripeConnectEnabled ?? false,
+      // Name kept for the portal: true when clients can pay online (Stripe or Bill.com).
+      stripeConnectEnabled: (settings?.stripeConnectEnabled || settings?.billcomEnabled) ?? false,
+      paymentProvider: settings?.billcomEnabled ? "billcom" : settings?.stripeConnectEnabled ? "stripe" : null,
     };
   }
 

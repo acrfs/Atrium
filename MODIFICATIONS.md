@@ -34,3 +34,11 @@ SIL Open Font License 1.1.
   clients, contacts, files, invoices or search. Only the settings, branding, integrations and team
   controllers grant it (`apps/api/src/clients/developer-role.spec.ts` enforces that). Developers are
   invited as admins and the pending invitation is switched (`PUT /clients/invitations/:id/role`).
+
+- Bill.com invoice payments (`apps/api/src/payments/billcom/`), shown in Settings > Billing in place
+  of Stripe. The owner signs in with their BILL account and developer key (stored encrypted). When a
+  client presses Pay, the invoice is created in BILL and the client goes to BILL's hosted payment page
+  (bank transfer or card). The invoice is marked paid when BILL reports `PAID_IN_FULL`, from BILL's
+  `invoice.updated` webhook (`POST /api/payments/billcom/webhook/:orgId`, status re-read from BILL)
+  and a 10 minute poll. New columns on `SystemSettings` and `Invoice` and a `BillcomCustomer` model.
+  The Stripe code is unchanged and still used if Bill.com is not connected.

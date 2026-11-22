@@ -20,24 +20,13 @@ test.describe("Invoice Payments", () => {
       await expect(page).toHaveURL(/\/dashboard\/settings\/billing$/);
     });
 
-    test("shows Stripe connection UI (direct key input or OAuth button)", async ({ page, request }) => {
+    test("shows the Bill.com sign-in form", async ({ page, request }) => {
       const features = await getPlanFeatures(request);
       test.skip(!features.online_payments, "Online payments need a paid plan");
       await page.goto("/dashboard/settings/payments");
-      // Direct mode shows sk_test_ input; Connect mode shows "Connect with Stripe" button
-      const directInput = page.getByPlaceholder(/sk_test_/i);
-      const connectBtn = page.getByRole("button", { name: /connect with stripe/i });
-      await expect(directInput.or(connectBtn)).toBeVisible({ timeout: 5000 });
-    });
-
-    test("shows Stripe action button (Save & Connect or Connect with Stripe)", async ({ page, request }) => {
-      const features = await getPlanFeatures(request);
-      test.skip(!features.online_payments, "Online payments need a paid plan");
-      await page.goto("/dashboard/settings/payments");
-      // Direct mode shows "Save & Connect"; Connect mode shows "Connect with Stripe"
-      const saveConnect = page.getByRole("button", { name: /save.*connect/i });
-      const connectStripe = page.getByRole("button", { name: /connect with stripe/i });
-      await expect(saveConnect.or(connectStripe)).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId("billcom-connect")).toBeVisible({ timeout: 5000 });
+      await expect(page.getByLabel(/developer key/i)).toBeVisible();
+      await expect(page.getByRole("button", { name: /connect bill\.com/i })).toBeDisabled();
     });
   });
 
