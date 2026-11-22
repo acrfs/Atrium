@@ -26,6 +26,9 @@ const mockPrisma = {
     delete: mock((args: PrismaArgs) => Promise.resolve({ id: args.where?.id })),
     deleteMany: mock(() => Promise.resolve({ count: 1 })),
   },
+  invoice: {
+    deleteMany: mock(() => Promise.resolve({ count: 0 })),
+  },
   projectClient: {
     findMany: mock(() => Promise.resolve([] as { userId: string }[])),
     deleteMany: mock(() => Promise.resolve({ count: 0 })),
@@ -405,6 +408,15 @@ describe("ProjectsService", () => {
     await service.remove("1", "org-1");
     expect(mockPrisma.project.deleteMany).toHaveBeenCalledWith({
       where: { id: "1", organizationId: "org-1" },
+    });
+  });
+
+  it("remove deletes the project's unpaid invoices and keeps paid ones", async () => {
+    mockPrisma.project.deleteMany.mockReturnValue(Promise.resolve({ count: 1 }));
+
+    await service.remove("1", "org-1");
+    expect(mockPrisma.invoice.deleteMany).toHaveBeenCalledWith({
+      where: { projectId: "1", organizationId: "org-1", status: { not: "paid" } },
     });
   });
 

@@ -71,6 +71,38 @@ describe("MailService", () => {
     mockLogger.error.mockClear();
   });
 
+  // --- Reply-To ---
+
+  test("EMAIL_REPLY_TO sets Reply-To on SMTP and Resend sends, and is left out when unset", async () => {
+    const service = (provider: string) =>
+      new MailService(
+        makeConfig() as unknown as ConfigService,
+        makeSettingsService({
+          provider,
+          from: "notifications@portal.example.com",
+          apiKey: "re_test",
+          smtp: { host: "smtp.example.com", port: 465, user: "u", pass: "p", security: "tls" },
+          isOrgConfigured: true,
+        }) as unknown as SettingsService,
+        mockLogger as unknown as PinoLogger,
+      );
+    const before = process.env.EMAIL_REPLY_TO;
+    try {
+      process.env.EMAIL_REPLY_TO = "owner@example.com";
+      await service("smtp").send("a@test.com", "S", "<p>x</p>", "org-1");
+      await service("resend").send("a@test.com", "S", "<p>x</p>", "org-1");
+      expect((mockSendMail.mock.calls[0] as unknown[])[0]).toMatchObject({ replyTo: "owner@example.com" });
+      expect((mockResendSend.mock.calls[0] as unknown[])[0]).toMatchObject({ replyTo: "owner@example.com" });
+
+      delete process.env.EMAIL_REPLY_TO;
+      await service("smtp").send("a@test.com", "S", "<p>x</p>", "org-1");
+      expect((mockSendMail.mock.calls[1] as unknown[])[0]).not.toHaveProperty("replyTo");
+    } finally {
+      if (before === undefined) delete process.env.EMAIL_REPLY_TO;
+      else process.env.EMAIL_REPLY_TO = before;
+    }
+  });
+
   // --- SMTP transporter caching ---
 
   test("SMTP transporter is cached and reused for the same config", async () => {

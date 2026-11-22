@@ -15,6 +15,16 @@ export function withSenderName(from: string): string {
   return `"${name.replace(/"/g, "")}" <${from.trim()}>`;
 }
 
+/**
+ * Where replies go when the portal sends from a send-only address such as
+ * notifications@portal.shanastudios.co. Set by EMAIL_REPLY_TO (unset: no Reply-To).
+ * Spread into the send options of every outgoing email.
+ */
+export function replyToFields(): { replyTo?: string } {
+  const address: string = (process.env.EMAIL_REPLY_TO ?? "").trim();
+  return address ? { replyTo: address } : {};
+}
+
 /** The settings page's test email, in the studio look. */
 export function testEmailHtml(): Promise<string> {
   return render(
@@ -24,6 +34,22 @@ export function testEmailHtml(): Promise<string> {
         "This is a test from your Shana Studios client portal.",
         "If you're reading it, invitations, updates and reminders will reach your clients from this address.",
       ],
+    }),
+  );
+}
+
+/** Sent after a password change on account.shanastudios.co. Never contains the password. */
+export function passwordChangedEmailHtml(): Promise<string> {
+  return render(
+    StudioNoticeEmail({
+      heading: "Your password was changed",
+      paragraphs: [
+        "Your Shana Studios password was just changed on account.shanastudios.co.",
+        "It's the password for your client portal and for your Google account (Gmail, Drive and Calendar), so use the new one the next time either asks you to sign in.",
+        "If this wasn't you, tell Aaron right away.",
+      ],
+      buttonLabel: "Account settings",
+      buttonUrl: "https://account.shanastudios.co",
     }),
   );
 }

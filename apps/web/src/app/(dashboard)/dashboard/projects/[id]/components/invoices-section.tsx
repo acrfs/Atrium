@@ -67,9 +67,14 @@ export function InvoicesSection({
   projectId,
   isArchived,
 }: {
-  projectId: string;
+  /** null lists invoices that have no project (e.g. their project was deleted). */
+  projectId: string | null;
   isArchived: boolean;
 }) {
+  // Invoices without a project can be viewed, paid or deleted, but new ones
+  // are always created from a project.
+  const canCreate = projectId !== null && !isArchived;
+  const projectParam = projectId ?? "none";
   const confirm = useConfirm();
   const { success, error: showError } = useToast();
   const currency = useCurrency();
@@ -137,11 +142,11 @@ export function InvoicesSection({
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", "10");
-      params.set("projectId", projectId);
+      params.set("projectId", projectParam);
       if (statusFilter) params.set("status", statusFilter);
       const [res, stats] = await Promise.all([
         apiFetch<PaginatedResponse<InvoiceListItem>>(`/invoices?${params.toString()}`),
-        apiFetch<{ outstandingAmount: number }>(`/invoices/stats?projectId=${encodeURIComponent(projectId)}`),
+        apiFetch<{ outstandingAmount: number }>(`/invoices/stats?projectId=${encodeURIComponent(projectParam)}`),
       ]);
       setInvoices(res.data);
       setTotalPages(res.meta.totalPages);
@@ -151,7 +156,7 @@ export function InvoicesSection({
     } finally {
       setLoading(false);
     }
-  }, [projectId, page, statusFilter]);
+  }, [projectParam, page, statusFilter]);
 
   useEffect(() => {
     loadInvoices();
@@ -216,7 +221,7 @@ export function InvoicesSection({
       const invoice = await apiFetch<{ id: string }>("/invoices", {
         method: "POST",
         body: JSON.stringify({
-          projectId,
+          projectId: projectId ?? undefined,
           dueDate: newDueDate || undefined,
           notes: newNotes || undefined,
           lineItems: newLineItems.filter((li) => li.description.trim()),
@@ -258,7 +263,7 @@ export function InvoicesSection({
     try {
       const formData = new FormData();
       formData.append("file", uploadFile);
-      formData.append("projectId", projectId);
+      if (projectId) formData.append("projectId", projectId);
       formData.append("amount", String(Math.round(parseFloat(uploadAmount || "0") * 100)));
       if (uploadDueDate) formData.append("dueDate", uploadDueDate);
       if (uploadNotes) formData.append("notes", uploadNotes);
@@ -449,7 +454,7 @@ export function InvoicesSection({
               Export
             </button>
           )}
-          {!isArchived && (
+          {canCreate && (
             <div ref={newMenuRef} className="relative">
               <button
                 onClick={() => setNewMenuOpen((v) => !v)}
@@ -530,7 +535,7 @@ export function InvoicesSection({
       </div>
 
       {/* Generate from time modal */}
-      {showGenerate && (
+      {showGenerate && projectId && (
         <GenerateFromTimeModal
           projectId={projectId}
           onClose={() => setShowGenerate(false)}

@@ -6,7 +6,7 @@ import * as nodemailer from "nodemailer";
 import { SettingsService } from "../settings/settings.service";
 import { smtpTransportOptions } from "./smtp-security";
 import type { SmtpConfig } from "./smtp-security";
-import { withSenderName } from "./studio-mail";
+import { replyToFields, withSenderName } from "./studio-mail";
 
 const MAX_CONCURRENT_SENDS = 2;
 
@@ -139,6 +139,7 @@ export class MailService {
           const resend = new Resend(emailConfig.apiKey);
           const { error } = await resend.emails.send({
             from: withSenderName(emailConfig.from),
+            ...replyToFields(),
             to,
             subject,
             html,
@@ -159,6 +160,7 @@ export class MailService {
           const transporter = this.getSmtpTransporter(emailConfig.smtp, organizationId);
           await transporter.sendMail({
             from: withSenderName(emailConfig.from),
+            ...replyToFields(),
             to,
             subject,
             html,
@@ -181,6 +183,7 @@ export class MailService {
 
     const { error } = await this.resend.emails.send({
       from: withSenderName(this.from),
+      ...replyToFields(),
       to,
       subject,
       html,
