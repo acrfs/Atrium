@@ -690,6 +690,8 @@ model Invoice {
   // Stripe Connect payment tracking
   stripeCheckoutSessionId String?
   stripePaymentIntentId   String?
+  // Bill.com: the copy of this invoice in the studio's BILL account
+  billcomInvoiceId        String?
   paidAt                  DateTime?
   paidAmount              Int? // Amount actually paid (cents)
 
@@ -796,6 +798,16 @@ model SystemSettings {
   stripeConnectEnabled   Boolean  @default(false) // true when payments are configured (either mode)
   stripeConnectLivemode  Boolean  @default(false)
   stripePaymentMethods   String[] @default([])
+
+  // Bill.com payments (alternative to Stripe; takes priority when enabled)
+  billcomEnabled         Boolean @default(false)
+  billcomSandbox         Boolean @default(false)
+  billcomUsername        String? // encrypted
+  billcomPassword        String? // encrypted
+  billcomOrganizationId  String?
+  billcomDevKey          String? // encrypted
+  billcomSubscriptionId  String?
+  billcomWebhookKey      String? // encrypted — securityKey of the invoice.updated subscription
 
   // File settings
   maxFileSizeMb Int @default(50)
@@ -1542,4 +1554,15 @@ model PendingProjectAccess {
   @@unique([projectId, email])
   @@index([organizationId, email])
   @@map("pending_project_access")
+}
+
+/// The BILL customer a portal client pays as, per workspace and email.
+model BillcomCustomer {
+  id                String   @id @default(cuid())
+  organizationId    String
+  email             String
+  billcomCustomerId String
+  createdAt         DateTime @default(now())
+
+  @@unique([organizationId, email])
 }

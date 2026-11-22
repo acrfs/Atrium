@@ -1,4 +1,4 @@
-import { IsString, IsUrl, MaxLength, MinLength, IsArray, ArrayMinSize, ArrayMaxSize, IsIn } from "class-validator";
+import { IsString, IsUrl, MaxLength, MinLength, IsArray, ArrayMinSize, ArrayMaxSize, IsIn, IsBoolean } from "class-validator";
 
 const urlOptions = {
   protocols: ["https", "http"],
@@ -41,4 +41,29 @@ export class SavePaymentMethodsDto {
   @ArrayMaxSize(10)
   @IsIn(ALLOWED_METHODS, { each: true })
   paymentMethods!: string[];
+}
+
+export class ConnectBillcomDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  username!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  password!: string;
+
+  @IsString()
+  @MinLength(3)
+  @MaxLength(64)
+  organizationId!: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(200)
+  devKey!: string;
+
+  @IsBoolean()
+  sandbox!: boolean;
 }

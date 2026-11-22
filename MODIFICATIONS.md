@@ -41,3 +41,11 @@ Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
   `GOOGLE_SSO_CLIENT_SECRET` (32+ chars), `GOOGLE_SSO_PRIVATE_KEY` (RSA PEM, or base64 of it) and
   `GOOGLE_SSO_ALLOWED_DOMAINS` are set; `GOOGLE_SSO_REDIRECT_URIS` lists the exact redirect URIs Google
   shows. A signed-out user is sent to `/login?next=...` and returns to Google after signing in.
+
+- Bill.com invoice payments (`apps/api/src/payments/billcom/`), shown in Settings > Billing in place
+  of Stripe. The owner signs in with their BILL account and developer key (stored encrypted). When a
+  client presses Pay, the invoice is created in BILL and the client goes to BILL's hosted payment page
+  (bank transfer or card). The invoice is marked paid when BILL reports `PAID_IN_FULL`, from BILL's
+  `invoice.updated` webhook (`POST /api/payments/billcom/webhook/:orgId`, status re-read from BILL)
+  and a 10 minute poll. New columns on `SystemSettings` and `Invoice` and a `BillcomCustomer` model.
+  Stripe checkout still runs, through the same shared access checks, when Bill.com is not connected.

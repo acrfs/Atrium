@@ -98,6 +98,10 @@ export function PortalInvoicesSection({
     if (paymentParam === "success") {
       success("Payment successful! The invoice has been marked as paid.");
       loadInvoices(); // Refresh to show updated status
+    } else if (paymentParam === "submitted") {
+      // Bill.com: bank payments take a few days, so the invoice turns paid once Bill.com confirms it.
+      success("Thank you! Your payment was sent. The invoice will show as paid once it clears.");
+      loadInvoices();
     } else if (paymentParam === "cancelled") {
       info("Payment was not completed. You can try again below.");
     }

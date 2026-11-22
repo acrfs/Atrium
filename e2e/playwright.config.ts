@@ -102,6 +102,8 @@ export default defineConfig({
       env: {
         INTEGRATIONS_ALLOW_PRIVATE_URLS: "true",
         STRIPE_CONNECT_CLIENT_ID: "",
+        // billcom-payments.e2e.ts runs a stand-in for BILL's API on this port.
+        BILLCOM_API_BASE_URL: "http://127.0.0.1:4599",
         // demo.e2e.ts needs demo mode on, against the same workspace global
         // setup seeds — see DEMO_SLUG for why the two must agree.
         DEMO_MODE: "true",
