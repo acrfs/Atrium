@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, ServiceU
 import { Reflector } from "@nestjs/core";
 import type { Request } from "express";
 import { IS_PUBLIC_KEY } from "../common/decorators/public.decorator";
-import { isPrivilegedRole } from "../common/helpers/privileged-role";
+import { isStaffRole } from "../common/helpers/privileged-role";
 import type { AuthenticatedRequest } from "../common";
 import { canonicalPath, parseOriginalUrl } from "../auth/staff-only-org-routes";
 import { gateDecision, hasSecondFactor, isCrossWorkspaceRoute, isOpenRoute } from "./second-factor";
@@ -13,6 +13,8 @@ const AUTH_PREFIX: string = "/api/auth";
 const MESSAGES: Record<GateRefusal, string> = {
   SECOND_FACTOR_REQUIRED: "Confirm it's you with your second factor to continue.",
   TWO_FACTOR_REQUIRED: "Your workspace requires two-factor authentication. Set it up to continue.",
+  PASSKEY_REQUIRED: "Your workspace requires a passkey. Add one to continue.",
+  PASSKEY_SIGN_IN_REQUIRED: "Your workspace requires signing in with your passkey.",
 };
 
 type GateRequest = Partial<
@@ -25,6 +27,8 @@ type GateRequest = Partial<
     | "previewMode"
     | "workspaceRequiresTwoFactor"
     | "staffInRequiringWorkspace"
+    | "workspaceRequiresPasskey"
+    | "staffInPasskeyWorkspace"
     | "sessionLookupFailed"
   >
 > &
@@ -67,12 +71,17 @@ export class SecondFactorGuard implements CanActivate {
     if (isPublic && !isAuthProxy) return true;
 
     // Only staff can preview as a client, and preview swaps the role to the client's.
-    const isStaff: boolean = req.previewMode === true || isPrivilegedRole(req.member?.role);
+    // Developers sign in to the dashboard too, so they are held to the same rules.
+    const isStaff: boolean = req.previewMode === true || isStaffRole(req.member?.role);
     const hasFactor: boolean = hasSecondFactor(req.user);
     const refusal: GateRefusal | null = gateDecision({
       route,
       hasFactor,
       secondFactor: req.session.secondFactor ?? null,
+      hasPasskey: req.user.hasPasskey === true,
+      passkeyRequired:
+        (req.workspaceRequiresPasskey === true && isStaff) ||
+        (isCrossWorkspaceRoute(route) && req.staffInPasskeyWorkspace === true),
       enrollmentOwed:
         !hasFactor &&
         ((req.workspaceRequiresTwoFactor === true && isStaff) ||

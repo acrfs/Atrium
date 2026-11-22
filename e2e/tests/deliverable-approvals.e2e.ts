@@ -389,4 +389,51 @@ test.describe("Deliverable approvals", () => {
     await clientCtx.close();
     await ownerCtx.close();
   });
+  test("the owner opening a deliverable in the portal sees who decides, not buttons that fail", async ({ browser }) => {
+    const { context: ownerCtx, page: owner } = await createOwner(browser, "deliv-staff-owner");
+    const { clientEmail, password } = await inviteAndAcceptClient(browser, owner, "deliv-staff-client");
+    const clients = await (await owner.request.get(`${API_URL}/api/clients?limit=100`)).json();
+    const clientRow = (clients.data ?? clients).find((m: { user: { email: string } }) => m.user.email === clientEmail);
+    const headers = { "x-csrf-token": await csrf(ownerCtx) };
+    const project = await (await owner.request.post(`${API_URL}/api/projects`, {
+      data: { name: "Staff View E2E", clientUserIds: [clientRow.userId] },
+      headers,
+    })).json();
+    const created = await owner.request.post(`${API_URL}/api/documents/link`, {
+      data: { projectId: project.id, title: "Lung illustration", url: "https://example.com/lung", sendNow: true },
+      headers,
+    });
+    expect(created.ok()).toBe(true);
+    const docId: string = (await created.json()).id;
+
+    // The API only takes a decision from the project's client.
+    const refused = await owner.request.post(`${API_URL}/api/documents/${docId}/respond`, {
+      data: { action: "accepted", version: 1 },
+      headers,
+    });
+    expect(refused.status()).toBe(403);
+
+    // So the owner's portal view says so instead of offering Approve / Request changes.
+    await owner.goto(`${WEB_URL}/portal/projects/${project.id}?tab=files&doc=${docId}`);
+    const review = owner.getByTestId("deliverable-review");
+    await expect(review.getByTestId("studio-view-note")).toBeVisible();
+    await expect(review.getByRole("button", { name: /^approve$/i })).toHaveCount(0);
+    await expect(review.getByRole("button", { name: /request changes/i })).toHaveCount(0);
+
+    // The client still gets the buttons, and approving works.
+    const { ctx: clientCtx, page: client } = await loginClient(browser, clientEmail, password);
+    await client.goto(`${WEB_URL}/portal/projects/${project.id}?tab=files&doc=${docId}`);
+    await expect(client.getByTestId("studio-view-note")).toHaveCount(0);
+    await client.getByRole("button", { name: /^approve$/i }).click();
+    await client.getByRole("button", { name: /^confirm$/i }).click();
+    await expect(client.getByTestId("deliverable-review")).toHaveCount(0);
+
+    // The owner then reads the decision, with no Change decision button.
+    await owner.goto(`${WEB_URL}/portal/projects/${project.id}?tab=files&doc=${docId}`);
+    await expect(owner.getByText(/approved by/i)).toBeVisible();
+    await expect(owner.getByRole("button", { name: /change decision/i })).toHaveCount(0);
+
+    await clientCtx.close();
+    await ownerCtx.close();
+  });
 });

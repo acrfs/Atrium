@@ -1,81 +1,71 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { passwordProblems, syncVercel, syncPortal, usernameMatches } from "./sync.mjs";
-import { pageHtml, emailHtml } from "./views.mjs";
+import { passwordProblems, usernameMatches, verifyPortal, setPortalPassword } from "./sync.mjs";
+import { pageHtml, signInHtml } from "./views.mjs";
+import { createSessions, readCookie, sessionCookie, SESSION_TTL_MS } from "./session.mjs";
 
-const cfg = { vercelToken: "t", vercelTeam: "acrfs-projects", vercelProject: "shana-studios", vercelEnvKey: "SMTP_PASS",
-  portalInternalUrl: "http://atrium:8080", portalSyncToken: "x".repeat(40), portalLoginEmail: "shana@shanastudios.co",
-  mailbox: "shana@shanastudios.co", webmailUrl: "https://hostinger.titan.email/mail/" };
+const cfg = { portalInternalUrl: "http://atrium:8080", portalSyncToken: "x".repeat(40), portalLoginEmail: "shana@shanastudios.co" };
 
-test("password rule matches Titan's", () => {
-  assert.deepEqual(passwordProblems("Abcdef1!"), []);
-  assert.ok(passwordProblems("abcdefg1!").includes("an uppercase letter"));
-  assert.ok(passwordProblems("Abcdefgh!").includes("a number"));
-  assert.ok(passwordProblems("Abcdefg1").includes("a symbol"));
+test("password rule matches the portal's", () => {
+  assert.deepEqual(passwordProblems("abcdefgh"), []);
   assert.ok(passwordProblems("Ab1!").includes("at least 8 characters"));
-  assert.ok(passwordProblems("Ab1!" + "x".repeat(50)).includes("at most 50 characters"));
+  assert.ok(passwordProblems("x".repeat(129)).includes("at most 128 characters"));
+  assert.ok(passwordProblems(undefined).includes("at least 8 characters"));
 });
 
-function fakeVercel(states) {
+function fakePortal(reply) {
   const calls = [];
   const fetchImpl = async (url, opts) => {
-    calls.push({ url, method: opts.method, body: opts.body && JSON.parse(opts.body) });
-    const u = new URL(url);
-    const json = (o) => ({ ok: true, status: 200, text: async () => JSON.stringify(o) });
-    assert.equal(u.searchParams.get("slug"), "acrfs-projects");
-    if (opts.method === "GET" && u.pathname === "/v10/projects/shana-studios/env")
-      return json({ envs: [{ id: "e1", key: "SMTP_PASS" }, { id: "e2", key: "SMTP_PASS" }, { id: "e3", key: "OTHER" }] });
-    if (opts.method === "PATCH") return json({});
-    if (u.pathname === "/v9/projects/shana-studios") return json({ id: "prj_1", name: "shana-studios" });
-    if (u.pathname === "/v6/deployments") return json({ deployments: [{ uid: "dpl_old" }] });
-    if (opts.method === "POST") return json({ id: "dpl_new", readyState: "QUEUED" });
-    if (u.pathname === "/v13/deployments/dpl_new") return json({ readyState: states.shift() });
-    throw new Error("unexpected " + url);
+    calls.push({ url, headers: opts.headers, body: JSON.parse(opts.body) });
+    return reply(url);
   };
   return { calls, fetchImpl };
 }
+const json = (o, status = 200) => ({ ok: status < 300, status, json: async () => o });
 
-test("vercel: updates every SMTP_PASS, redeploys production and waits", async () => {
-  const { calls, fetchImpl } = fakeVercel(["BUILDING", "READY"]);
-  const r = await syncVercel(cfg, "Abcdef1!", { fetchImpl, sleep: async () => {} });
-  assert.equal(r.ok, true, r.detail);
-  const patches = calls.filter((c) => c.method === "PATCH");
-  assert.deepEqual(patches.map((c) => new URL(c.url).pathname), ["/v9/projects/shana-studios/env/e1", "/v9/projects/shana-studios/env/e2"]);
-  assert.deepEqual(patches[0].body, { value: "Abcdef1!" });
-  const post = calls.find((c) => c.method === "POST");
-  assert.deepEqual(post.body, { name: "shana-studios", deploymentId: "dpl_old", target: "production" });
+test("verify: sends the token and login email, maps the answer", async () => {
+  const { calls, fetchImpl } = fakePortal(() => json({ ok: true }));
+  assert.deepEqual(await verifyPortal(cfg, "Secret123", fetchImpl), { ok: true });
+  assert.equal(calls[0].url, "http://atrium:8080/api/internal/studio-sync/verify");
+  assert.equal(calls[0].headers["x-studio-sync-token"], cfg.portalSyncToken);
+  assert.deepEqual(calls[0].body, { loginEmail: "shana@shanastudios.co", password: "Secret123" });
+
+  const wrong = await verifyPortal(cfg, "nope", fakePortal(() => json({ ok: false })).fetchImpl);
+  assert.equal(wrong.ok, false);
+  assert.equal(wrong.authFailed, true);
 });
 
-test("vercel: reports a failed redeploy", async () => {
-  const { fetchImpl } = fakeVercel(["ERROR"]);
-  const r = await syncVercel(cfg, "Abcdef1!", { fetchImpl, sleep: async () => {} });
+test("verify: a portal error is not reported as a wrong password", async () => {
+  const r = await verifyPortal(cfg, "x", fakePortal(() => json({}, 503)).fetchImpl);
   assert.equal(r.ok, false);
-  assert.match(r.detail, /ERROR/);
+  assert.equal(r.authFailed, false);
+  const down = await verifyPortal(cfg, "x", async () => { throw new Error("ECONNREFUSED"); });
+  assert.equal(down.authFailed, false);
 });
 
-test("vercel: API errors become a readable message", async () => {
-  const fetchImpl = async () => ({ ok: false, status: 403, text: async () => JSON.stringify({ error: { message: "Not authorized" } }) });
-  const r = await syncVercel(cfg, "Abcdef1!", { fetchImpl });
-  assert.deepEqual(r, { ok: false, detail: "Vercel: Not authorized" });
+test("set: one line for the sign-in and one for the notice", async () => {
+  const { calls, fetchImpl } = fakePortal(() => json({ login: "updated", notified: true }));
+  const r = await setPortalPassword(cfg, "NewSecret1", fetchImpl);
+  assert.equal(calls[0].url, "http://atrium:8080/api/internal/studio-sync/password");
+  assert.deepEqual(calls[0].body, { loginEmail: "shana@shanastudios.co", password: "NewSecret1" });
+  assert.deepEqual(r.map((x) => x.ok), [true, true]);
+
+  const quiet = await setPortalPassword(cfg, "NewSecret1", fakePortal(() => json({ login: "updated", notified: false })).fetchImpl);
+  assert.deepEqual(quiet.map((x) => x.ok), [true, false]);
+
+  const refused = await setPortalPassword(cfg, "NewSecret1", fakePortal(() => json({}, 403)).fetchImpl);
+  assert.equal(refused.length, 1);
+  assert.equal(refused[0].ok, false);
 });
 
-test("portal: sends the token and both addresses", async () => {
-  let seen;
-  const fetchImpl = async (url, opts) => { seen = { url, opts }; return { ok: true, json: async () => ({ login: "updated", smtpWorkspaces: 1 }) }; };
-  const r = await syncPortal(cfg, "Abcdef1!", fetchImpl);
-  assert.equal(r.ok, true);
-  assert.equal(seen.url, "http://atrium:8080/api/internal/studio-sync/password");
-  assert.equal(seen.opts.headers["x-studio-sync-token"], cfg.portalSyncToken);
-  assert.deepEqual(JSON.parse(seen.opts.body), { loginEmail: cfg.portalLoginEmail, smtpUser: cfg.mailbox, password: "Abcdef1!" });
+test("pages mention no Titan, no website step and no address", () => {
+  for (const html of [pageHtml(), signInHtml()]) {
+    assert.doesNotMatch(html, /Titan|webmail|lead form|Vercel/i);
+    assert.doesNotMatch(html, /shana@/);
+  }
+  assert.match(pageHtml(), /Current password/);
+  assert.match(pageHtml(), /Google/);
 });
-
-test("views escape text and never include the password", () => {
-  const html = emailHtml([{ ok: true, label: "<b>x</b>", detail: "fine" }]);
-  assert.ok(!html.includes("<b>x</b>"));
-  assert.match(pageHtml(cfg), /Titan webmail/);
-});
-
-import { createSessions, readCookie, sessionCookie, SESSION_TTL_MS } from "./session.mjs";
 
 test("sessions: valid until expiry, reject tampering and other keys", () => {
   let t = 1_000_000;
@@ -96,8 +86,7 @@ test("cookies: read and write", () => {
   assert.match(sessionCookie("v", 60), /HttpOnly; Secure; SameSite=Strict; Max-Age=60/);
 });
 
-test("sign-in page asks for a username and password and shows no email", async () => {
-  const { signInHtml } = await import("./views.mjs");
+test("sign-in page asks for a username and password and shows no email", () => {
   const html = signInHtml();
   assert.match(html, /Account settings/);
   assert.match(html, /autocomplete="username"/);
@@ -105,7 +94,7 @@ test("sign-in page asks for a username and password and shows no email", async (
   assert.doesNotMatch(html, /shanastudios\.co\b(?!\/)|shana@/);
 });
 
-test("username is the mailbox, full or short, any case", () => {
+test("username is her address, full or short, any case", () => {
   const m = "shana@shanastudios.co";
   assert.equal(usernameMatches("shana@shanastudios.co", m), true);
   assert.equal(usernameMatches(" Shana ", m), true);

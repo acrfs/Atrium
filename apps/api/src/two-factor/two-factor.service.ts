@@ -9,11 +9,11 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { ROLES } from "@atrium/shared";
 import { PrismaService } from "../prisma/prisma.service";
-import { isPrivilegedRole } from "../common/helpers/privileged-role";
+import { isStaffRole } from "../common/helpers/privileged-role";
 import { hasSecondFactor, passkeyProofIsRecent } from "./second-factor";
 import { secondFactorsOf } from "./second-factors-of";
 import type { SecondFactors } from "./second-factors-of";
-import { isStaffAnywhere, isStaffInRequiringWorkspace } from "./staff-requirement";
+import { isStaffAnywhere, isStaffInPasskeyWorkspace, isStaffInRequiringWorkspace } from "./staff-requirement";
 import { passkeysEnabled } from "../common/helpers/passkeys";
 import { countRecoveryCodes } from "./recovery-codes";
 import { resetSecondFactors } from "./reset-second-factors";
@@ -37,6 +37,10 @@ export interface TwoFactorStatus {
   /** Staff in a workspace that requires 2FA, with no factor yet. */
   enrollmentRequired: boolean;
   workspaceRequires: boolean;
+  /** The active workspace requires passkeys for staff. */
+  workspaceRequiresPasskey: boolean;
+  /** This user must have a passkey and sign in with it (staff of a workspace that requires them). */
+  passkeyRequired: boolean;
   isStaff: boolean;
   isOwner: boolean;
   /** null when the authenticator app is off. */
@@ -82,31 +86,42 @@ export class TwoFactorService {
 
   async getStatus(input: StatusInput): Promise<TwoFactorStatus> {
     const { userId, organizationId, role } = input;
-    const [factors, codesLeft, settings, ownerCount, staffInRequiring, staffAnywhere] = await Promise.all([
+    const [factors, codesLeft, settings, ownerCount, staffInRequiring, staffAnywhere, staffInPasskey] = await Promise.all([
       secondFactorsOf(this.prisma, userId),
       this.countCodes(userId),
       organizationId
-        ? this.prisma.systemSettings.findUnique({ where: { organizationId }, select: { requireTwoFactor: true } })
+        ? this.prisma.systemSettings.findUnique({
+            where: { organizationId },
+            select: { requireTwoFactor: true, requirePasskey: true },
+          })
         : Promise.resolve(null),
       organizationId && role === ROLES.OWNER
         ? this.prisma.member.count({ where: { organizationId, role: ROLES.OWNER } })
         : Promise.resolve(0),
       this.isStaffInRequiringWorkspace(userId),
       isStaffAnywhere(this.prisma, userId),
+      isStaffInPasskeyWorkspace(this.prisma, userId),
     ]);
 
     const enabled: boolean = hasSecondFactor({ twoFactorEnabled: factors.totp, hasPasskey: factors.passkeys > 0 });
-    const isStaff: boolean = isPrivilegedRole(role);
+    const isStaff: boolean = isStaffRole(role);
     const workspaceRequires: boolean = settings?.requireTwoFactor === true;
+    const workspaceRequiresPasskey: boolean = settings?.requirePasskey === true;
+    const passkeyRequired: boolean = workspaceRequiresPasskey && isStaff;
     return {
       enabled,
       totpEnabled: factors.totp,
       passkeyCount: factors.passkeys,
       passkeysOffered: passkeysEnabled(this.config) && (staffAnywhere || factors.passkeys > 0),
-      canRemoveLastPasskey: !(staffInRequiring && !factors.totp && factors.passkeys <= 1),
-      pending: enabled && input.secondFactor === null,
-      enrollmentRequired: workspaceRequires && isStaff && !enabled,
+      canRemoveLastPasskey: !(staffInRequiring && !factors.totp && factors.passkeys <= 1) && !(staffInPasskey && factors.passkeys <= 1),
+      // Where passkeys are required, a session that passed anything else signs in again with the passkey.
+      pending:
+        (enabled && input.secondFactor === null) ||
+        (passkeyRequired && factors.passkeys > 0 && input.secondFactor !== "passkey"),
+      enrollmentRequired: (workspaceRequires && isStaff && !enabled) || (passkeyRequired && factors.passkeys === 0),
       workspaceRequires,
+      workspaceRequiresPasskey,
+      passkeyRequired,
       isStaff,
       isOwner: role === ROLES.OWNER,
       recoveryCodesLeft: factors.totp ? codesLeft : null,
@@ -130,6 +145,32 @@ export class TwoFactorService {
     });
     this.logger.log(
       JSON.stringify({ event: "two_factor.requirement_changed", organizationId, userId, required }),
+    );
+    return { required };
+  }
+
+  /**
+   * Owner-only. Staff must then have a passkey and sign in with it. Turning it
+   * on needs passkeys to work on this install and the owner's own passkey, so
+   * the owner is never the one locked into setup by surprise.
+   */
+  async setPasskeyRequirement(userId: string, organizationId: string, required: boolean): Promise<{ required: boolean }> {
+    if (required) {
+      if (!passkeysEnabled(this.config)) {
+        throw new BadRequestException("Passkeys don't work on this server: it needs an https:// web address.");
+      }
+      const factors: SecondFactors = await secondFactorsOf(this.prisma, userId);
+      if (factors.passkeys === 0) throw new BadRequestException("Add a passkey to your own account first.");
+    }
+    await this.prisma.systemSettings.upsert({
+      where: { organizationId },
+      update: { requirePasskey: required },
+      create: { organizationId, requirePasskey: required },
+    });
+    // Cached sessions carry the old setting; drop them so it applies at once.
+    this.sessionCache.clear();
+    this.logger.log(
+      JSON.stringify({ event: "two_factor.passkey_requirement_changed", organizationId, userId, required }),
     );
     return { required };
   }

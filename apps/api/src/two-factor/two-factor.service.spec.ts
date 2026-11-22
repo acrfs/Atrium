@@ -41,7 +41,7 @@ const verifyBackupCode = mock((): Promise<unknown> => Promise.resolve({ token: "
 const sendAlert = mock((): Promise<void> => Promise.resolve());
 const authService = { auth: { api: { verifyTOTP, verifyBackupCode } }, sendAlert };
 const deleteUser = mock(() => undefined);
-const sessionCache = { deleteUser };
+const sessionCache = { deleteUser, clear: mock(() => undefined) };
 
 const config = { getOrThrow: (): string => SECRET, get: (): string | undefined => undefined } as unknown as ConfigService;
 
@@ -142,7 +142,9 @@ describe("TwoFactorService.getStatus with passkeys", () => {
 
   it("lets requiring-workspace staff turn TOTP off when they have a passkey, but not remove their last passkey", async () => {
     prisma.user.findUnique.mockImplementation(() => Promise.resolve({ twoFactorEnabled: true }));
-    prisma.member.findFirst.mockImplementation(() => Promise.resolve({ id: "m1" }));
+    // Staff of a workspace that requires 2FA, not passkeys.
+    prisma.member.findFirst.mockImplementation(((args: { where: { organization?: { systemSettings?: { requirePasskey?: boolean } } } }) =>
+      Promise.resolve(args.where.organization?.systemSettings?.requirePasskey === true ? null : { id: "m1" })) as unknown as () => Promise<unknown>);
     prisma.passkey.count.mockImplementation(() => Promise.resolve(1));
     const both = await service().getStatus(input({ secondFactor: "totp" }));
     expect(both.canTurnOff).toBe(true);
@@ -186,6 +188,60 @@ describe("TwoFactorService.setRequirement", () => {
   });
 });
 
+describe("TwoFactorService where passkeys are required", () => {
+  function requirePasskeys(): void {
+    prisma.systemSettings.findUnique.mockImplementation(() =>
+      Promise.resolve({ requireTwoFactor: false, requirePasskey: true }),
+    );
+    prisma.member.findFirst.mockImplementation(() => Promise.resolve({ id: "m1" }));
+  }
+
+  it("asks staff with no passkey to add one, even with the authenticator app on", async () => {
+    requirePasskeys();
+    prisma.user.findUnique.mockImplementation(() => Promise.resolve({ twoFactorEnabled: true }));
+    prisma.passkey.count.mockImplementation(() => Promise.resolve(0));
+    const status = await service().getStatus(input({ secondFactor: "totp", role: "developer" }));
+    expect(status.passkeyRequired).toBe(true);
+    expect(status.pending).toBe(false);
+    expect(status.enrollmentRequired).toBe(true);
+  });
+
+  it("sends staff who signed in with the app back to sign in with their passkey", async () => {
+    requirePasskeys();
+    prisma.user.findUnique.mockImplementation(() => Promise.resolve({ twoFactorEnabled: true }));
+    prisma.passkey.count.mockImplementation(() => Promise.resolve(2));
+    expect((await service().getStatus(input({ secondFactor: "totp" }))).pending).toBe(true);
+    const passkey = await service().getStatus(input({ secondFactor: "passkey" }));
+    expect(passkey.pending).toBe(false);
+    expect(passkey.enrollmentRequired).toBe(false);
+  });
+
+  it("keeps staff's last passkey", async () => {
+    requirePasskeys();
+    prisma.user.findUnique.mockImplementation(() => Promise.resolve({ twoFactorEnabled: true }));
+    prisma.passkey.count.mockImplementation(() => Promise.resolve(1));
+    expect((await service().getStatus(input({ secondFactor: "passkey" }))).canRemoveLastPasskey).toBe(false);
+  });
+
+  it("leaves clients alone", async () => {
+    requirePasskeys();
+    prisma.member.findFirst.mockImplementation(() => Promise.resolve(null));
+    prisma.passkey.count.mockImplementation(() => Promise.resolve(0));
+    const status = await service().getStatus(input({ role: "member" }));
+    expect(status.passkeyRequired).toBe(false);
+    expect(status.enrollmentRequired).toBe(false);
+  });
+
+  it("can only be turned on by an owner who has a passkey", async () => {
+    prisma.passkey.count.mockImplementation(() => Promise.resolve(0));
+    await expect(service().setPasskeyRequirement("u1", "org1", true)).rejects.toThrow("Add a passkey");
+    prisma.passkey.count.mockImplementation(() => Promise.resolve(1));
+    expect(await service().setPasskeyRequirement("u1", "org1", true)).toEqual({ required: true });
+    prisma.passkey.count.mockImplementation(() => Promise.resolve(0));
+    expect(await service().setPasskeyRequirement("u1", "org1", false)).toEqual({ required: false });
+  });
+});
+
 describe("TwoFactorService.isStaffInRequiringWorkspace", () => {
   it("looks for a staff membership in a workspace that requires 2FA", async () => {
     prisma.member.findFirst.mockImplementation(() => Promise.resolve({ id: "m1" }));
@@ -194,7 +250,7 @@ describe("TwoFactorService.isStaffInRequiringWorkspace", () => {
       where: {
         userId: "u1",
         role: { in: ["owner", "admin", "developer"] },
-        organization: { systemSettings: { requireTwoFactor: true } },
+        organization: { systemSettings: { OR: [{ requireTwoFactor: true }, { requirePasskey: true }] } },
       },
       select: { id: true },
     });

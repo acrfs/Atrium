@@ -32,6 +32,7 @@ interface Methods {
 export function TwoFactorForm({ onCustomDomain, webUrl }: TwoFactorFormProps): React.ReactElement {
   const [mode, setMode] = useState<"loading" | "challenge" | "step-up">("loading");
   const [methods, setMethods] = useState<Methods>({ code: true, passkey: false });
+  const [passkeyRequired, setPasskeyRequired] = useState(false);
   const [useRecovery, setUseRecovery] = useState(false);
   const [code, setCode] = useState("");
   const [trustDevice, setTrustDevice] = useState(false);
@@ -47,8 +48,16 @@ export function TwoFactorForm({ onCustomDomain, webUrl }: TwoFactorFormProps): R
           // Step-up: offer exactly the factors this user has.
           const statusRes: Response = await fetch(`${API_URL}/api/two-factor/status`, { credentials: "include" });
           if (statusRes.ok) {
-            const status = (await statusRes.json()) as { totpEnabled?: boolean; passkeyCount?: number };
-            setMethods({ code: status.totpEnabled === true, passkey: (status.passkeyCount ?? 0) > 0 });
+            const status = (await statusRes.json()) as {
+              totpEnabled?: boolean;
+              passkeyCount?: number;
+              passkeyRequired?: boolean;
+            };
+            const hasPasskey: boolean = (status.passkeyCount ?? 0) > 0;
+            // The workspace requires passkeys: the app or a recovery code won't get them in.
+            const passkeyOnly: boolean = status.passkeyRequired === true && hasPasskey;
+            setMethods({ code: status.totpEnabled === true && !passkeyOnly, passkey: hasPasskey });
+            setPasskeyRequired(passkeyOnly);
           } else {
             // Can't tell which factors this user has: offer both rather than nothing.
             console.error(`Two-factor status failed: ${statusRes.status}`);
@@ -134,7 +143,9 @@ export function TwoFactorForm({ onCustomDomain, webUrl }: TwoFactorFormProps): R
         <div className="text-center">
           <h1 className="text-2xl font-bold">Two-factor authentication</h1>
           <p className="text-[var(--muted-foreground)] mt-2">
-            {!methods.code
+            {passkeyRequired
+              ? "Your workspace requires signing in with your passkey."
+              : !methods.code
               ? "Confirm it's you with your passkey."
               : useRecovery
                 ? "Enter one of your recovery codes."

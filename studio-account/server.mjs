@@ -1,30 +1,22 @@
-// account.shanastudios.co: Shana changes her Titan password, then enters it
-// here once; this copies it to the portal and the website.
+// account.shanastudios.co: Shana signs in with her current password and sets a
+// new one. It's her portal password, which is also her Google Workspace sign-in.
 import http from "node:http";
 import { readFileSync } from "node:fs";
-import { passwordProblems, usernameMatches, verifyTitan, syncPortal, syncVercel, sendConfirmation } from "./sync.mjs";
-import { pageHtml, signInHtml, emailHtml } from "./views.mjs";
+import { passwordProblems, usernameMatches, verifyPortal, setPortalPassword } from "./sync.mjs";
+import { pageHtml, signInHtml } from "./views.mjs";
 import { createSessions, readCookie, sessionCookie, SESSION_COOKIE, SESSION_TTL_MS } from "./session.mjs";
 
 const env = process.env;
 const cfg = {
-  mailbox: env.MAILBOX ?? "shana@shanastudios.co",
-  imapHost: env.IMAP_HOST ?? "imap.titan.email",
-  smtpHost: env.SMTP_HOST ?? "smtp.titan.email",
-  webmailUrl: env.WEBMAIL_URL ?? "https://hostinger.titan.email/mail/",
   portalInternalUrl: env.PORTAL_INTERNAL_URL ?? "http://atrium:8080",
   portalSyncToken: env.STUDIO_SYNC_TOKEN ?? "",
   portalLoginEmail: env.PORTAL_LOGIN_EMAIL ?? env.MAILBOX ?? "shana@shanastudios.co",
-  vercelToken: env.VERCEL_TOKEN ?? "",
-  vercelTeam: env.VERCEL_TEAM ?? "",
-  vercelProject: env.VERCEL_PROJECT ?? "shana-studios",
-  vercelEnvKey: env.VERCEL_ENV_KEY ?? "SMTP_PASS",
 };
 const PORT = Number(env.PORT ?? 8090);
 const LOGO = readFileSync(new URL("./logo.png", import.meta.url));
 
 // At most 5 tries per 15 minutes from one address, 20 overall, so the page
-// can't be used to guess the mailbox password.
+// can't be used to guess the password.
 const WINDOW_MS = 15 * 60 * 1000;
 const attempts = new Map();
 let globalAttempts = [];
@@ -43,17 +35,6 @@ let busy = false;
 const sessions = createSessions();
 const signedIn = (req) => sessions.valid(readCookie(req.headers.cookie, SESSION_COOKIE));
 const clientIp = (req) => String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "").split(",")[0].trim();
-
-async function runSync(password) {
-  const results = [];
-  const portal = await syncPortal(cfg, password);
-  results.push({ label: "Portal sign-in and email setting", ...portal });
-  const site = await syncVercel(cfg, password);
-  results.push({ label: "Website lead form", ...site });
-  const mail = await sendConfirmation(cfg, password, results, emailHtml);
-  results.push({ label: "Confirmation email", ...mail });
-  return results;
-}
 
 function readBody(req, limit = 4096) {
   return new Promise((resolve, reject) => {
@@ -83,7 +64,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost");
     if (req.method === "GET" && url.pathname === "/") {
-      return send(res, 200, "text/html; charset=utf-8", signedIn(req) ? pageHtml(cfg) : signInHtml());
+      return send(res, 200, "text/html; charset=utf-8", signedIn(req) ? pageHtml() : signInHtml());
     }
     if (req.method === "GET" && url.pathname === "/logo.png") {
       res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
@@ -104,9 +85,9 @@ const server = http.createServer(async (req, res) => {
       // Same answer for a wrong username or a wrong password, so the page
       // doesn't tell anyone which username is real.
       const wrong = () => send(res, 401, "application/json", '{"error":"That username and password don\'t match."}');
-      if (!usernameMatches(username, cfg.mailbox)) return wrong();
-      const titan = await verifyTitan(cfg, password);
-      if (!titan.ok) return titan.authFailed ? wrong() : send(res, 502, "application/json", JSON.stringify({ error: titan.detail }));
+      if (!usernameMatches(username, cfg.portalLoginEmail)) return wrong();
+      const check = await verifyPortal(cfg, password);
+      if (!check.ok) return check.authFailed ? wrong() : send(res, 502, "application/json", JSON.stringify({ error: check.detail }));
       console.log(new Date().toISOString(), "signed in");
       return send(res, 200, "application/json", '{"ok":true}', { "set-cookie": sessionCookie(sessions.issue(), SESSION_TTL_MS / 1000) });
     }
@@ -120,16 +101,21 @@ const server = http.createServer(async (req, res) => {
         return send(res, 429, "application/json", JSON.stringify({ error: "Too many tries. Wait 15 minutes and try again." }));
       }
       if (busy) return send(res, 409, "application/json", JSON.stringify({ error: "A change is already running. Wait a minute and try again." }));
-      const { password } = JSON.parse(await readBody(req));
+      const { password, current } = JSON.parse(await readBody(req));
       const problems = passwordProblems(password);
       if (problems.length) {
         return send(res, 400, "application/json", JSON.stringify({ error: `The password needs ${problems.join(", ")}.` }));
       }
       busy = true;
       try {
-        const titan = await verifyTitan(cfg, password);
-        if (!titan.ok) return send(res, titan.authFailed ? 401 : 502, "application/json", JSON.stringify({ error: titan.detail }));
-        const results = [{ label: "Titan mailbox", ...titan }, ...(await runSync(password))];
+        // The current password again, so an unattended signed-in page can't be used to take over the account.
+        const check = await verifyPortal(cfg, typeof current === "string" ? current : "");
+        if (!check.ok) {
+          return check.authFailed
+            ? send(res, 401, "application/json", JSON.stringify({ error: "Your current password isn't right." }))
+            : send(res, 502, "application/json", JSON.stringify({ error: check.detail }));
+        }
+        const results = await setPortalPassword(cfg, password);
         console.log(new Date().toISOString(), "sync", results.map((r) => `${r.label}=${r.ok ? "ok" : "fail"}`).join(" "));
         return send(res, 200, "application/json", JSON.stringify({ results }));
       } finally {

@@ -54,6 +54,8 @@ process.env.ATRIUM_TRACKERS = TRACKERS;
  * test intercepts the redirect to it.
  */
 export const GOOGLE_SSO_CLIENT_ID: string = "google-workspace-e2e";
+/** studio-sync.e2e.ts calls the account page's internal endpoints with this token. */
+export const STUDIO_SYNC_TOKEN: string = "e2e-studio-sync-token-0123456789abcdef";
 export const GOOGLE_SSO_CLIENT_SECRET: string = "e2e-google-sso-secret-0123456789abcdef";
 export const GOOGLE_SSO_REDIRECT_URI: string = "https://accounts.google.test/sso/oidc/callback";
 const GOOGLE_SSO_PRIVATE_KEY: string = Buffer.from(
@@ -122,6 +124,7 @@ export default defineConfig({
         GOOGLE_SSO_ALLOWED_DOMAINS: "test.local",
         GOOGLE_CALENDAR_CLIENT_ID,
         GOOGLE_CALENDAR_CLIENT_SECRET,
+        STUDIO_SYNC_TOKEN,
       },
     },
     {

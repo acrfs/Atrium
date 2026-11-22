@@ -92,7 +92,7 @@ export async function passkeyBeforeHook(
     if (outcome === "last_factor") {
       throw new APIError("FORBIDDEN", {
         message:
-          "Your workspace requires two-factor authentication, so you can't remove your last way to provide it. Add another passkey or an authenticator app first.",
+          "Your workspace requires two-factor authentication or a passkey, so you can't remove your last way to sign in. Add another passkey first.",
       });
     }
     deps.forgetUser(input.userId);
@@ -146,9 +146,11 @@ export async function passkeyAfterHook(input: PasskeyAfterInput, deps: PasskeyHo
   if (!input.userId) return;
 
   if (input.path === "/passkey/verify-registration") {
-    // The ceremony proved the passkey, so the session that added it stays
-    // verified; the user's other sessions now need a factor.
-    if (input.currentSession && input.currentSession.secondFactor === null) {
+    // The ceremony proved the passkey (with user verification), so the session
+    // that added it counts as a passkey one; the user's other sessions now need
+    // a factor. Also when it had passed the authenticator app: staff owing a
+    // passkey add one and carry on, instead of signing in a second time.
+    if (input.currentSession && input.currentSession.secondFactor !== "passkey") {
       await deps.prisma.session.update({
         where: { token: input.currentSession.token },
         data: { secondFactor: "passkey" },

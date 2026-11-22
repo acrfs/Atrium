@@ -41,7 +41,11 @@ export function stampFor(input: StampInput): SecondFactor | null {
 }
 
 /** Why the gate refused a request. Sent as `code` in the 403 body. */
-export type GateRefusal = "SECOND_FACTOR_REQUIRED" | "TWO_FACTOR_REQUIRED";
+export type GateRefusal =
+  | "SECOND_FACTOR_REQUIRED"
+  | "TWO_FACTOR_REQUIRED"
+  | "PASSKEY_REQUIRED"
+  | "PASSKEY_SIGN_IN_REQUIRED";
 
 export interface GateInput {
   /**
@@ -55,6 +59,10 @@ export interface GateInput {
   secondFactor: string | null;
   /** Staff in a workspace that requires 2FA, with no factor yet. */
   enrollmentOwed: boolean;
+  /** Staff in a workspace that requires passkeys: they need one, and must sign in with it. */
+  passkeyRequired?: boolean;
+  /** The user has at least one passkey. */
+  hasPasskey?: boolean;
 }
 
 /** Open in any state: reading yourself, signing out, and starting a new sign-in. */
@@ -84,6 +92,17 @@ const ENROLL_ROUTES: readonly string[] = [
   "auth:/two-factor/enable",
   "auth:/two-factor/verify-totp",
   "auth:/two-factor/get-totp-uri",
+  "auth:/passkey/generate-register-options",
+  "auth:/passkey/verify-registration",
+  "auth:/organization/list",
+  "auth:/organization/set-active",
+];
+
+/**
+ * Open to staff who owe a passkey: adding one, or going to another workspace.
+ * Not the authenticator app: it doesn't satisfy the requirement.
+ */
+const PASSKEY_ENROLL_ROUTES: readonly string[] = [
   "auth:/passkey/generate-register-options",
   "auth:/passkey/verify-registration",
   "auth:/organization/list",
@@ -135,12 +154,24 @@ export function passkeyProofIsRecent(
 /**
  * The core rule: a session whose user has a second factor, but which never
  * passed one, may only step up, read itself or sign out. Staff who owe
- * enrollment may only enroll or switch workspace.
+ * enrollment may only enroll or switch workspace. Where passkeys are required,
+ * staff without one may only add one, and staff with one must have signed in
+ * with it: a session that passed the authenticator app, a recovery code or a
+ * trusted device may only sign in again with the passkey.
  */
 export function gateDecision(input: GateInput): GateRefusal | null {
   const { route } = input;
   if (input.hasFactor && input.secondFactor === null) {
     return matches(route, OPEN_ROUTES) || matches(route, STEP_UP_ROUTES) ? null : "SECOND_FACTOR_REQUIRED";
+  }
+  if (input.passkeyRequired === true) {
+    if (input.hasPasskey !== true) {
+      return matches(route, OPEN_ROUTES) || matches(route, PASSKEY_ENROLL_ROUTES) ? null : "PASSKEY_REQUIRED";
+    }
+    if (input.secondFactor !== "passkey") {
+      return matches(route, OPEN_ROUTES) ? null : "PASSKEY_SIGN_IN_REQUIRED";
+    }
+    return null;
   }
   if (input.enrollmentOwed) {
     return matches(route, OPEN_ROUTES) || matches(route, ENROLL_ROUTES) ? null : "TWO_FACTOR_REQUIRED";

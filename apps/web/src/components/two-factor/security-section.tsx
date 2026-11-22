@@ -19,6 +19,10 @@ export interface TwoFactorStatus {
   pending: boolean;
   enrollmentRequired: boolean;
   workspaceRequires: boolean;
+  /** The active workspace requires passkeys for staff. */
+  workspaceRequiresPasskey: boolean;
+  /** This user must have a passkey and sign in with it. */
+  passkeyRequired: boolean;
   isStaff: boolean;
   isOwner: boolean;
   recoveryCodesLeft: number | null;

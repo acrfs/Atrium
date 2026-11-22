@@ -19,7 +19,10 @@ export function timeLabel(iso: string): string {
 function chipHref(e: CalendarEvent): string {
   if (e.type === "task") return `/dashboard/projects/${e.projectId}?tab=tasks&task=${e.id}`;
   if (e.type === "project_start" || e.type === "project_end") return `/dashboard/projects/${e.projectId}`;
-  if (e.type === "invoice_due" && e.projectId) return `/dashboard/projects/${e.projectId}?tab=invoices`;
+  if (e.type === "invoice_due") {
+    // An invoice whose project was deleted lives on the unassigned invoices page.
+    return e.projectId ? `/dashboard/projects/${e.projectId}?tab=invoices` : "/dashboard/invoices";
+  }
   return "#";
 }
 

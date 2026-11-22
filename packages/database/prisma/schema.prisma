@@ -775,6 +775,9 @@ model SystemSettings {
 
   // Owners and admins of this workspace must have a second factor.
   requireTwoFactor Boolean @default(false)
+  // Owners, admins and developers of this workspace must have a passkey and
+  // sign in with it. Implies requireTwoFactor for every last-factor check.
+  requirePasskey   Boolean @default(false)
 
   // Email settings
   emailProvider String? // "resend" | "smtp" | null (disabled)

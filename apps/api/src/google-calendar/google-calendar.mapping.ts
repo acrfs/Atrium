@@ -37,7 +37,7 @@ export function addDays(date: string, days: number): string {
 function portalLink(webUrl: string, e: PortalItem): string {
   if (e.type === "task") return `${webUrl}/dashboard/projects/${e.projectId}?tab=tasks&task=${e.id}`;
   if (e.type === "invoice_due") {
-    return e.projectId ? `${webUrl}/dashboard/projects/${e.projectId}?tab=invoices` : `${webUrl}/dashboard/calendar`;
+    return e.projectId ? `${webUrl}/dashboard/projects/${e.projectId}?tab=invoices` : `${webUrl}/dashboard/invoices`;
   }
   return `${webUrl}/dashboard/projects/${e.projectId}`;
 }

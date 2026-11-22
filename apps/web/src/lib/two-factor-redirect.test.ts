@@ -10,6 +10,11 @@ describe("redirectForGateCode", () => {
     expect(redirectForGateCode("TWO_FACTOR_REQUIRED")).toBe("/2fa/setup");
   });
 
+  it("sends staff of a workspace that requires passkeys to add one, or to sign in with it", () => {
+    expect(redirectForGateCode("PASSKEY_REQUIRED")).toBe("/2fa/setup");
+    expect(redirectForGateCode("PASSKEY_SIGN_IN_REQUIRED")).toBe("/login/2fa");
+  });
+
   it("ignores anything else", () => {
     expect(redirectForGateCode("CSRF")).toBeNull();
     expect(redirectForGateCode(undefined)).toBeNull();

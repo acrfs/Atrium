@@ -35,6 +35,16 @@ export class TwoFactorController {
     return this.service.setRequirement(userId, organizationId, body.required);
   }
 
+  @Put("passkey-requirement")
+  @Roles("owner")
+  setPasskeyRequirement(
+    @Body() body: SetRequirementDto,
+    @CurrentUser("id") userId: string,
+    @CurrentOrg("id") organizationId: string,
+  ): Promise<{ required: boolean }> {
+    return this.service.setPasskeyRequirement(userId, organizationId, body.required);
+  }
+
   @Delete("admin/:userId")
   @Roles("owner", "admin")
   resetForMember(

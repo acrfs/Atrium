@@ -78,6 +78,20 @@ describe("deletePasskeyGuarded", () => {
   });
 });
 
+describe("deletePasskeyGuarded where passkeys are required", () => {
+  it("keeps staff's last passkey even with the authenticator app on", async () => {
+    const f: Fake = fake({ passkeys: 1, totp: true });
+    const outcome = await deletePasskeyGuarded(f.prisma, "u1", "pk1", async () => true, async () => true);
+    expect(outcome).toBe("last_factor");
+    expect(f.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("lets staff remove one of several", async () => {
+    const f: Fake = fake({ passkeys: 2 });
+    expect(await deletePasskeyGuarded(f.prisma, "u1", "pk1", async () => true, async () => true)).toBe("deleted");
+  });
+});
+
 describe("turning TOTP off and deleting the last passkey at once", () => {
   it("treats TOTP as off while a turn-off is in progress, so the last passkey stays", async () => {
     const f = fake({ passkeys: 1, totp: true, disabling: true });

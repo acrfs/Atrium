@@ -24,10 +24,14 @@ Changes made to the original software:
 Fonts added: Inter (web text), Instrument Serif (web wordmark and emails), Fraunces and Outfit (emails),
 Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
 
-- Password sync for the studio owner: an internal endpoint (`apps/api/src/studio-sync/`), off unless
-  `STUDIO_SYNC_TOKEN` is set, that sets one user's sign-in password and the matching SMTP password,
-  used by the separate `studio-account/` service (account.shanastudios.co). `MailService` gained
-  `clearSmtpTransporters()` so a changed SMTP password applies at once.
+- Password page for the studio owner: internal endpoints (`apps/api/src/studio-sync/`), off unless
+  `STUDIO_SYNC_TOKEN` is set, that check and set one user's sign-in password and email her a notice,
+  used by the separate `studio-account/` service (account.shanastudios.co). That password is also her
+  Google Workspace sign-in (see the Google entry below). `MailService` gained `clearSmtpTransporters()`
+  so a changed SMTP password applies at once.
+
+- `EMAIL_REPLY_TO`: when set, every email the portal sends carries that Reply-To, so mail sent from a
+  send-only address (notifications@portal.shanastudios.co) is answered to the studio's own inbox.
 
 - A Developer role (`developer`) for whoever runs the portal's technical side: workspace and email
   settings, branding, integration destinations and sign-in security, with no access to projects,
@@ -49,6 +53,21 @@ Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
   `invoice.updated` webhook (`POST /api/payments/billcom/webhook/:orgId`, status re-read from BILL)
   and a 10 minute poll. New columns on `SystemSettings` and `Invoice` and a `BillcomCustomer` model.
   Stripe checkout still runs, through the same shared access checks, when Bill.com is not connected.
+
+- Deleting a project now deletes its unpaid invoices with it; paid invoices stay as records with no
+  project. Invoices without a project are listed at `/dashboard/invoices` (API `projectId=none`), and
+  the dashboard's overdue list and the calendar link there instead of to a project that no longer exists.
+
+- Required passkeys for staff (`SystemSettings.requirePasskey`, Settings > Security > "Require
+  passkeys for staff", `PUT /api/two-factor/passkey-requirement`, owner-only, needs the owner's own
+  passkey). Owners, admins and developers then need a passkey and must sign in with it: without one
+  they can only add one (`PASSKEY_REQUIRED`, `/2fa/setup` offers passkeys only), and a session that
+  passed the authenticator app, a recovery code or a trusted device must sign in again with the
+  passkey (`PASSKEY_SIGN_IN_REQUIRED`). Their last passkey can't be removed. Clients are never asked.
+  Google Workspace sign-in (`/api/sso/google/authorize`) follows the same rule. The second-factor gate
+  now also holds developers to the existing "Require two-factor for staff" setting. Recovery: an owner
+  resets another member from Team; a locked-out owner needs `script:disable-2fa <email> --passkeys`
+  on the server, then adds a new passkey at the next sign-in.
 
 - Two-way Google Calendar sync (`apps/api/src/google-calendar/`), controlled from the Calendar page
   (Google Calendar button, New event). An owner or admin connects one Google account per workspace

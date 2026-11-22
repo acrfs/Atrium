@@ -3,8 +3,8 @@ export type GatePage = "/login/2fa" | "/2fa/setup";
 
 /** Maps the `code` of an API 403 to the page that resolves it, or null for any other 403. */
 export function redirectForGateCode(code: string | undefined): GatePage | null {
-  if (code === "SECOND_FACTOR_REQUIRED") return "/login/2fa";
-  if (code === "TWO_FACTOR_REQUIRED") return "/2fa/setup";
+  if (code === "SECOND_FACTOR_REQUIRED" || code === "PASSKEY_SIGN_IN_REQUIRED") return "/login/2fa";
+  if (code === "TWO_FACTOR_REQUIRED" || code === "PASSKEY_REQUIRED") return "/2fa/setup";
   return null;
 }
 
