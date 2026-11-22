@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { downloadFile } from "@/lib/download";
 import { track } from "@/lib/track";
 import { usePreviewMode } from "@/lib/preview-mode";
+import { useSession } from "@/lib/session-context";
 import { useToast } from "@/components/toast";
 
 const API_URL: string = process.env.NEXT_PUBLIC_API_URL || "";
@@ -44,6 +45,11 @@ type Mode = "idle" | "approving" | "requesting";
 export function PortalDeliverableReview({ doc, onClose, onDecided }: PortalDeliverableReviewProps): React.ReactElement {
   const toast = useToast();
   const preview: boolean = !!usePreviewMode().preview;
+  // Owners and admins can open any project in the portal, but only the
+  // project's client may approve or ask for changes (the API refuses anyone
+  // else), so the studio sees who decides instead of buttons that would fail.
+  const role: string = useSession().role;
+  const studioView: boolean = !preview && (role === "owner" || role === "admin");
   const [mode, setMode] = useState<Mode>("idle");
   const [changing, setChanging] = useState<boolean>(false);
   const [note, setNote] = useState<string>("");
@@ -229,14 +235,20 @@ export function PortalDeliverableReview({ doc, onClose, onDecided }: PortalDeliv
                 {doc.decision.reason && (
                   <p className="text-sm text-[var(--muted-foreground)] whitespace-pre-wrap">{doc.decision.reason}</p>
                 )}
-                <button
-                  onClick={() => { setNote(""); setMode("idle"); setChanging(true); }}
-                  disabled={preview}
-                  className="px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg disabled:opacity-50"
-                >
-                  Change decision
-                </button>
+                {!studioView && (
+                  <button
+                    onClick={() => { setNote(""); setMode("idle"); setChanging(true); }}
+                    disabled={preview}
+                    className="px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg disabled:opacity-50"
+                  >
+                    Change decision
+                  </button>
+                )}
               </div>
+            ) : studioView ? (
+              <p className="text-sm text-[var(--muted-foreground)]" data-testid="studio-view-note">
+                Waiting on your client. Only they can approve this or ask for changes, from their own portal login.
+              </p>
             ) : (
               <>
                 <div className="flex gap-2 flex-wrap">
