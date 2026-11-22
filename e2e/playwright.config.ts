@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { generateKeyPairSync } from "node:crypto";
 
 // Load the monorepo root .env so NEXT_PUBLIC_* vars are present when
 // Playwright spawns `next dev` (Next.js only auto-loads envs from its own
@@ -47,6 +48,18 @@ process.env.ATRIUM_TRACKERS = TRACKERS;
  * In CI nothing is configured, so this value is what Playwright starts the
  * API with.
  */
+/**
+ * google-sso.e2e.ts drives the portal as Google Workspace's OIDC identity
+ * provider. A throwaway RSA key per run; the callback is never served, the
+ * test intercepts the redirect to it.
+ */
+export const GOOGLE_SSO_CLIENT_ID: string = "google-workspace-e2e";
+export const GOOGLE_SSO_CLIENT_SECRET: string = "e2e-google-sso-secret-0123456789abcdef";
+export const GOOGLE_SSO_REDIRECT_URI: string = "https://accounts.google.test/sso/oidc/callback";
+const GOOGLE_SSO_PRIVATE_KEY: string = Buffer.from(
+  generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+).toString("base64");
+
 export const DEMO_SLUG: string = process.env.DEMO_ORG_SLUG ?? "demo-e2e";
 
 // Set on the runner process too, not only in the webServer child envs: global
@@ -95,6 +108,12 @@ export default defineConfig({
         DEMO_ORG_SLUG: DEMO_SLUG,
         DEMO_OWNER_EMAIL: "owner@demo.invalid",
         DEMO_CLIENT_EMAIL: "client@demo.invalid",
+        GOOGLE_SSO_CLIENT_ID,
+        GOOGLE_SSO_CLIENT_SECRET,
+        GOOGLE_SSO_PRIVATE_KEY,
+        GOOGLE_SSO_REDIRECT_URIS: GOOGLE_SSO_REDIRECT_URI,
+        // Every e2e owner signs up at test.local.
+        GOOGLE_SSO_ALLOWED_DOMAINS: "test.local",
       },
     },
     {
