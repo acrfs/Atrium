@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { CALENDAR_EVENT_TYPES, type CalendarEvent } from "@atrium/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { CalendarQueryDto } from "./calendar.dto";
+import { cachedRowToEvents } from "../google-calendar/google-calendar.events";
 
 export type { CalendarEvent };
 
@@ -55,8 +56,10 @@ export class CalendarService {
     const wantProjectStart = requestedTypes.has("project_start");
     const wantProjectEnd = requestedTypes.has("project_end");
     const wantInvoices = requestedTypes.has("invoice_due");
+    // Google events belong to no project, so a project filter leaves them out.
+    const wantGoogle = requestedTypes.has("google_event") && !query.projectId;
 
-    const [tasks, projects, invoices] = await Promise.all([
+    const [tasks, projects, invoices, googleEvents] = await Promise.all([
       wantTasks
         ? this.prisma.task.findMany({
             where: {
@@ -122,6 +125,19 @@ export class CalendarService {
             project: { name: string } | null;
             lineItems: Array<{ quantity: number; unitPrice: number }>;
           }>),
+      wantGoogle
+        ? this.prisma.googleCalendarEvent.findMany({
+            where: {
+              organizationId: orgId,
+              connection: { pullEnabled: true },
+              // A day of slack each way; date keys in the viewer's timezone trim it below.
+              start: { lte: new Date(to.getTime() + 86_400_000) },
+              end: { gte: new Date(from.getTime() - 86_400_000) },
+            },
+            orderBy: { start: "asc" },
+            take: 2000,
+          })
+        : Promise.resolve([]),
     ]);
 
     const events: CalendarEvent[] = [];
@@ -177,6 +193,13 @@ export class CalendarService {
         projectName: inv.project?.name ?? null,
         amountCents: inv.amount ?? computed,
       });
+    }
+
+    if (googleEvents.length > 0) {
+      const dateOnly = /^\d{4}-\d{2}-\d{2}$/;
+      const fromKey = dateOnly.test(query.from) ? query.from : toDateKey(from);
+      const toKey = dateOnly.test(query.to) ? query.to : toDateKey(to);
+      for (const g of googleEvents) events.push(...cachedRowToEvents(g, fromKey, toKey, tz));
     }
 
     events.sort((a, b) => a.date.localeCompare(b.date));

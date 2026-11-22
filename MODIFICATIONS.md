@@ -49,3 +49,13 @@ Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
   `invoice.updated` webhook (`POST /api/payments/billcom/webhook/:orgId`, status re-read from BILL)
   and a 10 minute poll. New columns on `SystemSettings` and `Invoice` and a `BillcomCustomer` model.
   Stripe checkout still runs, through the same shared access checks, when Bill.com is not connected.
+
+- Two-way Google Calendar sync (`apps/api/src/google-calendar/`), controlled from the Calendar page
+  (Google Calendar button, New event). An owner or admin connects one Google account per workspace
+  with OAuth (`GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`, redirect URI
+  `<API_URL>/api/google-calendar/callback`; tokens stored encrypted). Every five minutes, and on
+  "Sync now": open tasks, project start and end dates and sent or overdue invoices are written as
+  all-day events to a separate "<workspace> portal" calendar the portal creates in that account, and
+  events from the account's primary calendar are cached (`GoogleCalendarEvent`) and shown in the
+  portal calendar as `google_event`. Google events can be created, edited and deleted from the
+  portal. New models `GoogleCalendarConnection`, `GoogleCalendarEvent`, `GoogleCalendarPush`.

@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
-import { ChevronLeft, ChevronRight, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, SlidersHorizontal, Plus } from "lucide-react";
+import type { GoogleCalendarStatus } from "@atrium/shared";
+import { useToast } from "@/components/toast";
 import {
   ALL_TYPES,
   addMonths,
@@ -14,6 +16,22 @@ import {
 } from "./types";
 import { MonthGrid } from "./month-grid";
 import { AgendaList } from "./agenda-list";
+import { GoogleEventOpenContext } from "./event-chip";
+import { GoogleCalendarPanel } from "./google-calendar-panel";
+import { GoogleEventDialog } from "./google-event-dialog";
+
+type GoogleEvent = Extract<CalendarEvent, { type: "google_event" }>;
+
+/** What the portal says after Google sends the browser back (?google=...). */
+const GOOGLE_RESULT: Record<string, { ok: boolean; message: string }> = {
+  connected: { ok: true, message: "Google Calendar connected" },
+  denied: { ok: false, message: "Google Calendar was not connected: access was not granted" },
+  expired: { ok: false, message: "That Google sign-in took too long. Try connecting again." },
+  forbidden: { ok: false, message: "Only owners and admins can connect Google Calendar" },
+  no_offline_access: { ok: false, message: "Google did not allow ongoing access. Try connecting again." },
+  not_configured: { ok: false, message: "Google Calendar isn't set up on this server" },
+  error: { ok: false, message: "Google Calendar could not be connected. Try again." },
+};
 
 interface ProjectOption { id: string; name: string }
 type ProjectsResponse = { data: ProjectOption[] } | ProjectOption[];
@@ -23,6 +41,7 @@ const TYPE_LABEL: Record<CalendarEventType, string> = {
   project_start: "Project starts",
   project_end: "Project ends",
   invoice_due: "Invoices",
+  google_event: "Google Calendar",
 };
 
 export default function CalendarPage(): React.ReactElement {
@@ -39,6 +58,27 @@ export default function CalendarPage(): React.ReactElement {
   const [filterOpen, setFilterOpen] = useState<boolean>(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const filterRef = useRef<HTMLDivElement | null>(null);
+  const [google, setGoogle] = useState<GoogleCalendarStatus | null>(null);
+  const [dialog, setDialog] = useState<{ event: GoogleEvent | null } | null>(null);
+  const toast = useToast();
+
+  useEffect(() => {
+    apiFetch<GoogleCalendarStatus>("/google-calendar/status")
+      .then(setGoogle)
+      .catch((err: unknown) => { console.error(err); });
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("google");
+    if (result) {
+      const r = GOOGLE_RESULT[result] ?? GOOGLE_RESULT.error;
+      if (r.ok) toast.success(r.message);
+      else toast.error(r.message);
+      params.delete("google");
+      const qs = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!pickerOpen && !filterOpen) return;
@@ -92,7 +132,7 @@ export default function CalendarPage(): React.ReactElement {
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [month, projectId]);
+  }, [month, projectId, google?.lastSyncedAt, google?.connected, google?.pullEnabled]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -222,6 +262,15 @@ export default function CalendarPage(): React.ReactElement {
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
 
+          {google?.connected && (
+            <button
+              onClick={() => setDialog({ event: null })}
+              className="h-7 px-2.5 inline-flex items-center gap-1 text-xs font-medium rounded-md bg-[var(--primary)] text-white hover:opacity-90 transition-opacity"
+            ><Plus size={12} /> New event</button>
+          )}
+
+          <GoogleCalendarPanel status={google} onChange={setGoogle} />
+
           {/* Filter popover */}
           <div ref={filterRef} className="relative">
             <button
@@ -281,6 +330,7 @@ export default function CalendarPage(): React.ReactElement {
         </div>
       </div>
 
+      <GoogleEventOpenContext.Provider value={(event) => setDialog({ event })}>
       {error ? (
         <div className="border border-[var(--border)] rounded-lg p-6 text-center text-sm">
           <div className="text-red-600 mb-2">Failed to load</div>
@@ -292,6 +342,19 @@ export default function CalendarPage(): React.ReactElement {
         <MonthGrid month={month} events={filtered} />
       ) : (
         <AgendaList events={filtered} />
+      )}
+      </GoogleEventOpenContext.Provider>
+
+      {dialog && (
+        <GoogleEventDialog
+          event={dialog.event}
+          defaultDate={toISODate(new Date())}
+          onClose={() => setDialog(null)}
+          onSaved={() => {
+            setDialog(null);
+            load();
+          }}
+        />
       )}
     </div>
   );

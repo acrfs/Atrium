@@ -47,6 +47,7 @@ import { ContactsModule } from "./contacts/contacts.module";
 import { OrganizationModule } from "./organization/organization.module";
 import { StudioSyncModule } from "./studio-sync/studio-sync.module";
 import { GoogleSsoModule } from "./google-sso/google-sso.module";
+import { GoogleCalendarModule } from "./google-calendar/google-calendar.module";
 import { HealthController } from "./health.controller";
 import { SessionMiddleware } from "./auth/session.middleware";
 import { PreviewModeMiddleware } from "./auth/preview-mode.middleware";
@@ -120,6 +121,7 @@ import { PlanGuard } from "./common/guards/plan.guard";
     OrganizationModule,
     StudioSyncModule,
     GoogleSsoModule,
+    GoogleCalendarModule,
     TwoFactorModule,
   ],
   controllers: [HealthController],
