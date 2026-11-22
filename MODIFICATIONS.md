@@ -49,3 +49,6 @@ Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
   `invoice.updated` webhook (`POST /api/payments/billcom/webhook/:orgId`, status re-read from BILL)
   and a 10 minute poll. New columns on `SystemSettings` and `Invoice` and a `BillcomCustomer` model.
   Stripe checkout still runs, through the same shared access checks, when Bill.com is not connected.
+- Deleting a project now deletes its unpaid invoices with it; paid invoices stay as records with no
+  project. Invoices without a project are listed at `/dashboard/invoices` (API `projectId=none`), and
+  the dashboard's overdue list and the calendar link there instead of to a project that no longer exists.

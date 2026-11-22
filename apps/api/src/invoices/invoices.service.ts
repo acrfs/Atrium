@@ -16,7 +16,7 @@ import { CreateInvoiceDto, CreateUploadedInvoiceDto, UpdateInvoiceDto, InvoiceLi
 
 interface InvoiceWhereInput {
   organizationId?: string;
-  projectId?: string;
+  projectId?: string | null;
   status?: string;
 }
 
@@ -27,6 +27,9 @@ function parsePaidAt(value: string): Date {
 
 // Statuses a portal client must never see (list, detail, PDF).
 export const CLIENT_HIDDEN_STATUSES: string[] = ["draft", "cancelled"];
+
+/** Query value for invoices without a project. */
+export const NO_PROJECT = "none";
 
 @Injectable()
 export class InvoicesService {
@@ -160,7 +163,7 @@ export class InvoicesService {
   async findAll(orgId: string, query: InvoiceListQueryDto) {
     const { page = 1, limit = 20, projectId, status } = query;
     const where: InvoiceWhereInput = { organizationId: orgId };
-    if (projectId) where.projectId = projectId;
+    if (projectId) where.projectId = projectId === NO_PROJECT ? null : projectId;
     if (status) where.status = status;
 
     const [data, total] = await Promise.all([
@@ -393,8 +396,10 @@ export class InvoicesService {
   }
 
   async getStats(orgId: string, projectId?: string) {
+    // projectId "none" scopes to invoices whose project was deleted (or never set).
+    const noProject = projectId === NO_PROJECT;
     const where: InvoiceWhereInput = { organizationId: orgId };
-    if (projectId) where.projectId = projectId;
+    if (projectId) where.projectId = noProject ? null : projectId;
 
     const [counts, totals] = await Promise.all([
       this.prisma.invoice.groupBy({
@@ -402,7 +407,22 @@ export class InvoicesService {
         where,
         _count: true,
       }),
-      projectId
+      noProject
+        ? this.prisma.$queryRaw<
+            Array<{ status: string; total: bigint | number }>
+          >`
+          SELECT i.status,
+            COALESCE(SUM(
+              CASE WHEN i.type = 'uploaded' THEN COALESCE(i.amount, 0)
+                   ELSE COALESCE(li.quantity * li."unitPrice", 0)
+              END
+            ), 0) as total
+          FROM "invoice" i
+          LEFT JOIN "invoice_line_item" li ON li."invoiceId" = i.id
+          WHERE i."organizationId" = ${orgId} AND i."projectId" IS NULL
+          GROUP BY i.status
+        `
+        : projectId
         ? this.prisma.$queryRaw<
             Array<{ status: string; total: bigint | number }>
           >`

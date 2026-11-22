@@ -606,9 +606,17 @@ export class ProjectsService implements OnApplicationBootstrap {
   }
 
   async remove(id: string, organizationId: string) {
-    const result = await this.prisma.project.deleteMany({
-      where: { id, organizationId },
-    });
+    // Invoices only SetNull on project delete, which left unpaid ones counted
+    // as outstanding with nowhere to open them. Unpaid invoices go with the
+    // project; paid ones stay as bookkeeping records under "No project".
+    const [, result] = await this.prisma.$transaction([
+      this.prisma.invoice.deleteMany({
+        where: { projectId: id, organizationId, status: { not: "paid" } },
+      }),
+      this.prisma.project.deleteMany({
+        where: { id, organizationId },
+      }),
+    ]);
     if (result.count === 0) throw new NotFoundException("Project not found");
   }
 
