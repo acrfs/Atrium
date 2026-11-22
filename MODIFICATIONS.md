@@ -21,8 +21,8 @@ Changes made to the original software:
 - The portal is invite only: Sign up sends new visitors to the contact chat on the studio's site,
   and user-facing "Atrium" wording names the portal or the studio instead.
 
-Fonts added: Instrument Serif, Fraunces and Outfit (web and emails), Outfit (invoice PDFs), all under the
-SIL Open Font License 1.1.
+Fonts added: Inter (web text), Instrument Serif (web wordmark and emails), Fraunces and Outfit (emails),
+Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
 
 - Password sync for the studio owner: an internal endpoint (`apps/api/src/studio-sync/`), off unless
   `STUDIO_SYNC_TOKEN` is set, that sets one user's sign-in password and the matching SMTP password,
