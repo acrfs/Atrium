@@ -3,11 +3,14 @@ import { ForbiddenException, ServiceUnavailableException } from "@nestjs/common"
 import { StudioSyncController } from "./studio-sync.controller";
 
 const TOKEN = "s".repeat(48);
-const dto = { loginEmail: "shana@shanastudios.co", smtpUser: "shana@shanastudios.co", password: "Abcdef1!" };
+const dto = { loginEmail: "shana@shanastudios.co", password: "Abcdef1!" };
 
 function build(token: string | undefined) {
   const config = { get: mock(() => token) };
-  const service = { setPassword: mock(() => Promise.resolve({ login: "updated" as const, smtpWorkspaces: 1 })) };
+  const service = {
+    setPassword: mock(() => Promise.resolve({ login: "updated" as const, notified: true })),
+    verifyPassword: mock(() => Promise.resolve(true)),
+  };
   return { controller: new StudioSyncController(config as never, service as never), service };
 }
 
@@ -25,7 +28,9 @@ describe("StudioSyncController", () => {
     for (const t of [undefined, "short"]) {
       const { controller, service } = build(t);
       expect(await errorOf(controller.setPassword(t, dto))).toBeInstanceOf(ServiceUnavailableException);
+      expect(await errorOf(controller.verify(t, dto))).toBeInstanceOf(ServiceUnavailableException);
       expect(service.setPassword).not.toHaveBeenCalled();
+      expect(service.verifyPassword).not.toHaveBeenCalled();
     }
   });
 
@@ -33,13 +38,20 @@ describe("StudioSyncController", () => {
     const { controller, service } = build(TOKEN);
     expect(await errorOf(controller.setPassword(undefined, dto))).toBeInstanceOf(ForbiddenException);
     expect(await errorOf(controller.setPassword("x".repeat(48), dto))).toBeInstanceOf(ForbiddenException);
+    expect(await errorOf(controller.verify("x".repeat(48), dto))).toBeInstanceOf(ForbiddenException);
     expect(service.setPassword).not.toHaveBeenCalled();
+    expect(service.verifyPassword).not.toHaveBeenCalled();
   });
 
   it("applies the change with the right token", async () => {
     const { controller, service } = build(TOKEN);
-    const result = await controller.setPassword(TOKEN, dto);
-    expect(result).toEqual({ login: "updated", smtpWorkspaces: 1 });
-    expect(service.setPassword).toHaveBeenCalledWith(dto.loginEmail, dto.smtpUser, dto.password);
+    expect(await controller.setPassword(TOKEN, dto)).toEqual({ login: "updated", notified: true });
+    expect(service.setPassword).toHaveBeenCalledWith("shana@shanastudios.co", "Abcdef1!");
+  });
+
+  it("checks a password with the right token", async () => {
+    const { controller, service } = build(TOKEN);
+    expect(await controller.verify(TOKEN, dto)).toEqual({ ok: true });
+    expect(service.verifyPassword).toHaveBeenCalledWith("shana@shanastudios.co", "Abcdef1!");
   });
 });

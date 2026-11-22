@@ -11,7 +11,7 @@ import { insecureCookiesInProduction } from "../common/helpers/secure-cookies";
 import { SMTP_DEFAULT_PORTS } from "@atrium/shared";
 import { resolveSmtpSecurity, smtpErrorMessage, smtpTransportOptions } from "../mail/smtp-security";
 import type { SmtpConfig } from "../mail/smtp-security";
-import { testEmailHtml, withSenderName } from "../mail/studio-mail";
+import { replyToFields, testEmailHtml, withSenderName } from "../mail/studio-mail";
 
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const EMAIL_CONFIG_TTL_MS = 60_000;
@@ -338,6 +338,7 @@ export class SettingsService {
         const resend = new Resend(emailConfig.apiKey);
         await resend.emails.send({
           from: withSenderName(emailConfig.from),
+          ...replyToFields(),
           to: recipientEmail,
           subject: "Shana Studios: test email",
           html: await testEmailHtml(),
@@ -347,6 +348,7 @@ export class SettingsService {
         const transporter = nodemailer.createTransport(smtpTransportOptions(emailConfig.smtp!));
         await transporter.sendMail({
           from: withSenderName(emailConfig.from),
+          ...replyToFields(),
           to: recipientEmail,
           subject: "Shana Studios: test email",
           html: await testEmailHtml(),

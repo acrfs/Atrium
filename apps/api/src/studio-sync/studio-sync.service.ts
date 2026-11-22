@@ -2,34 +2,50 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
-import { SettingsService } from "../settings/settings.service";
 import { MailService } from "../mail/mail.service";
+import { passwordChangedEmailHtml } from "../mail/studio-mail";
 
 export interface StudioSyncResult {
   login: "updated";
-  smtpWorkspaces: number;
+  notified: boolean;
 }
 
 /**
- * Shana Studios password sync: sets one person's sign-in password and the SMTP
- * password of every workspace that sends mail as that address, so a single
- * password change (made on account.shanastudios.co) reaches the portal.
+ * Shana Studios password page: checks and sets one person's portal sign-in
+ * password. The portal is also her Google Workspace sign-in (see google-sso),
+ * so this one password covers the portal and Google.
  */
 @Injectable()
 export class StudioSyncService {
   constructor(
     private prisma: PrismaService,
     private authService: AuthService,
-    private settingsService: SettingsService,
     private mailService: MailService,
     @InjectPinoLogger(StudioSyncService.name) private readonly logger: PinoLogger,
   ) {}
 
-  async setPassword(loginEmail: string, smtpUser: string, password: string): Promise<StudioSyncResult> {
-    const user = await this.prisma.user.findFirst({
+  private findUser(loginEmail: string) {
+    return this.prisma.user.findFirst({
       where: { email: { equals: loginEmail, mode: "insensitive" } },
-      select: { id: true },
+      select: { id: true, email: true },
     });
+  }
+
+  /** True when the password matches the user's portal sign-in password. */
+  async verifyPassword(loginEmail: string, password: string): Promise<boolean> {
+    const user = await this.findUser(loginEmail);
+    if (!user) return false;
+    const account = await this.prisma.account.findFirst({
+      where: { userId: user.id, providerId: "credential" },
+      select: { password: true },
+    });
+    if (!account?.password) return false;
+    const context = await this.authService.auth.$context;
+    return context.password.verify({ hash: account.password, password });
+  }
+
+  async setPassword(loginEmail: string, password: string): Promise<StudioSyncResult> {
+    const user = await this.findUser(loginEmail);
     if (!user) throw new NotFoundException("No portal user with that email");
 
     const context = await this.authService.auth.$context;
@@ -42,16 +58,22 @@ export class StudioSyncService {
       throw new NotFoundException("That portal user signs in without a password");
     }
 
-    const workspaces = await this.prisma.systemSettings.findMany({
-      where: { smtpUser: { equals: smtpUser, mode: "insensitive" } },
+    // The notice goes out through the workspace's own email setting.
+    const membership = await this.prisma.member.findFirst({
+      where: { userId: user.id },
       select: { organizationId: true },
+      orderBy: { createdAt: "asc" },
     });
-    for (const { organizationId } of workspaces) {
-      await this.settingsService.updateSettings(organizationId, { smtpPass: password });
+    let notified = false;
+    try {
+      const html = await passwordChangedEmailHtml();
+      const sent = await this.mailService.send(user.email, "Your Shana Studios password was changed", html, membership?.organizationId);
+      notified = sent.sent;
+    } catch (err) {
+      this.logger.warn({ err }, "Password change notice could not be sent");
     }
-    this.mailService.clearSmtpTransporters();
 
-    this.logger.info({ smtpWorkspaces: workspaces.length }, "Studio password sync applied");
-    return { login: "updated", smtpWorkspaces: workspaces.length };
+    this.logger.info({ notified }, "Studio password change applied");
+    return { login: "updated", notified };
   }
 }
