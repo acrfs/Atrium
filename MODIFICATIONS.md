@@ -34,3 +34,10 @@ Outfit (invoice PDFs), all under the SIL Open Font License 1.1.
   clients, contacts, files, invoices or search. Only the settings, branding, integrations and team
   controllers grant it (`apps/api/src/clients/developer-role.spec.ts` enforces that). Developers are
   invited as admins and the pending invitation is switched (`PUT /clients/invitations/:id/role`).
+
+- Google Workspace sign-in through the portal (`apps/api/src/google-sso/`): a minimal OpenID Connect
+  identity provider at `/api/sso/google` (discovery, authorize, token, userinfo, JWKS; RS256 id_tokens)
+  for one client, a Google Workspace third-party SSO profile. Off unless `GOOGLE_SSO_CLIENT_ID`,
+  `GOOGLE_SSO_CLIENT_SECRET` (32+ chars), `GOOGLE_SSO_PRIVATE_KEY` (RSA PEM, or base64 of it) and
+  `GOOGLE_SSO_ALLOWED_DOMAINS` are set; `GOOGLE_SSO_REDIRECT_URIS` lists the exact redirect URIs Google
+  shows. A signed-out user is sent to `/login?next=...` and returns to Google after signing in.
