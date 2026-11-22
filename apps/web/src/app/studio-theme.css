@@ -3,22 +3,14 @@
  * Tokens mirror website/site/src/index.css. Loaded after globals.css.
  */
 
-/* Instrument Serif headings and Fraunces for bold words and buttons, as on the
-   site. Body text is Inter instead of the site's Outfit: the portal is a
-   working tool and Aaron asked for a plainer, more professional sans. */
+/* The portal is a working tool, so Aaron asked for a plain, professional
+   font: Inter for all text. Instrument Serif stays for the studio wordmark. */
 @font-face {
   font-family: "Inter";
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
   src: url("/fonts/inter-latin.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/fonts/fraunces-latin.woff2") format("woff2");
 }
 @font-face {
   font-family: "Instrument Serif";
@@ -50,7 +42,6 @@
   --table: #fefbe1;
   --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --cta: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --primary: #2d2c80;
@@ -70,50 +61,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Headings in the portfolio's serif. Tailwind's bold utilities are overridden
-   because Instrument Serif has a single weight. */
+/* Headings, bold words and buttons are all Inter in the portal. Aaron asked
+   for a plain, professional look here, so the site's Instrument Serif and
+   Fraunces stay on the wordmark (font-serif) and in emails. */
 h1,
 h2,
 h3 {
-  font-family: var(--serif);
-  font-weight: 400 !important;
-  letter-spacing: -0.02em;
+  font-family: var(--sans);
+  font-weight: 600 !important;
+  letter-spacing: -0.015em;
   text-wrap: balance;
 }
-/* The serif runs small, so headings step up one size to keep their presence. */
-h2,
-h3 {
-  font-size: 1.375rem;
-  line-height: 1.2;
-}
-h1.text-xl { font-size: 1.75rem; line-height: 1.1; }
-h1.text-2xl { font-size: 2.5rem; line-height: 1.05; }
-h1.text-3xl { font-size: 3rem; line-height: 1.02; }
-:is(h2, h3).text-xs { font-size: 1rem; line-height: 1.2; }
-:is(h1, h2, h3).text-sm { font-size: 1.25rem; line-height: 1.2; }
-:is(h1, h2, h3).text-base { font-size: 1.375rem; line-height: 1.2; }
-:is(h1, h2, h3).text-lg { font-size: 1.625rem; line-height: 1.15; }
-:is(h2, h3).text-xl { font-size: 1.875rem; line-height: 1.1; }
-:is(h2, h3).text-2xl { font-size: 2.25rem; line-height: 1.05; }
-:is(h2, h3).text-3xl { font-size: 2.75rem; line-height: 1.02; }
-/* Small caps style labels stay in the sans. */
+h1.text-2xl { letter-spacing: -0.02em; }
+h1.text-3xl { letter-spacing: -0.025em; }
+/* Small caps style labels. */
 :is(h2, h3).uppercase {
-  font-family: var(--sans);
   font-weight: 600 !important;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
 }
 
-/* Bold words and buttons use the soft serif, as on the site. */
 strong,
 b,
 button,
 .font-semibold:not(h1, h2, h3),
 .font-bold:not(h1, h2, h3),
 :is(a, [role="button"])[class~="bg-[var(--primary)]"] {
-  font-family: var(--cta);
-  font-weight: 620;
-  font-variation-settings: "SOFT" 100, "WONK" 0;
+  font-family: var(--sans);
+  font-weight: 600;
   letter-spacing: 0;
 }
 
